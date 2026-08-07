@@ -1,3 +1,21 @@
 <Solution>
-  <Project Path="F1Predictor/F1Predictor.csproj" />
+  <Folder Name="/src/" />
+  <Folder Name="/src/Core/">
+    <Project Path="F1Predictor.Application/F1Predictor.Application.csproj" Id="08dbd38f-180e-4c81-80ff-aeb1e13e9f8a" />
+    <Project Path="F1Predictor.Domain/F1Predictor.Domain.csproj" Id="f7bd993c-f17e-4846-9765-3ef0525714b5" />
+  </Folder>
+  <Folder Name="/src/Infrastructure/">
+    <Project Path="F1Predictor.Infrastructure/F1Predictor.Infrastructure.csproj" Id="f31f2efa-d6fc-4001-9bdd-c2ce7631b78f" />
+  </Folder>
+  <Folder Name="/src/Aspire/">
+    <Project Path="F1Predictor.AppHost/F1Predictor.AppHost.csproj" Id="1efbc713-3195-46f2-8e75-10907530ef04" />
+    <Project Path="F1Predictor.ServiceDefaults/F1Predictor.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/src/Presentation/">
+    <Project Path="F1Predictor.WebApi/F1Predictor.WebApi.csproj" Id="56b3acba-f6ad-4198-81b0-15baae36222b" />
+  </Folder>
+  <Folder Name="/src/SharedKernel/">
+    <Project Path="SharedKernel/SharedKernel.csproj" Id="6d98cfb3-0ec2-4d45-b176-9bedf3a3c5c4" />
+  </Folder>
+  <Folder Name="/tests/" />
 </Solution>

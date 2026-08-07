@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>F1Predictor.Domain</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SharedKernel\SharedKernel.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="NotesManagement\ValueObjects\" />
+  </ItemGroup>
+
+</Project>

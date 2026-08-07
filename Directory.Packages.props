@@ -1,0 +1,84 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+    <NoWarn>$(NoWarn);NU1507</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
+    <PackageVersion Include="FluentValidation" Version="12.1.1" />
+    <PackageVersion Include="MessagePack" Version="3.1.7" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.9">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageVersion>
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.FileExtensions" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.5.0" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Data.Sqlite.Core" Version="10.0.9" />
+    <PackageVersion Include="AspNetCore.HealthChecks.UI.Client" Version="9.0.0" />
+    <PackageVersion Include="Bogus" Version="35.6.5" />
+    <PackageVersion Include="coverlet.collector" Version="8.0.1" />
+    <PackageVersion Include="FluentAssertions" Version="8.9.0" />
+    <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.8" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.8" />
+    <PackageVersion Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.9" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.Analyzers" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.AspNetCore.Http.Features" Version="5.0.17" />
+    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker" Version="2.1.0" />
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore" Version="2.0.2" />
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.ServiceBus" Version="5.23.0" />
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Sdk" Version="2.0.5" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Analyzers" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.9" />
+    <!-- Pinned above the 2.1.11 range covered by GHSA-2m69-gcr7-jv3q, which EF Core's Sqlite
+         provider would otherwise drag in transitively. -->
+    <PackageVersion Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.12" />
+    <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />
+    <PackageVersion Include="SQLitePCLRaw.provider.e_sqlite3" Version="2.1.12" />
+    <PackageVersion Include="SQLitePCLRaw.core" Version="2.1.12" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Azure" Version="1.13.1" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.ML" Version="5.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.ML" Version="5.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.NET.Runtime.WebAssembly.Wasi.Sdk" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.4.0" />
+    <PackageVersion Include="Microsoft.OpenApi" Version="2.10.0" />
+    <PackageVersion Include="Moq" Version="4.20.72" />
+    <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
+    <PackageVersion Include="Radzen.Blazor" Version="10.2.3" />
+    <PackageVersion Include="Scalar.AspNetCore" Version="2.16.6" />
+    <PackageVersion Include="Scrutor" Version="7.0.0" />
+    <PackageVersion Include="Swashbuckle.AspNetCore" Version="10.1.7" />
+    <PackageVersion Include="System.Text.Json" Version="10.0.1" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.7.0" />
+    <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="10.7.0" />
+    <PackageVersion Include="Meziantou.Analyzer" Version="3.0.117" />
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.16.0" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.16.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.16.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.16.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.1" />
+    <PackageVersion Include="SonarAnalyzer.CSharp" Version="10.27.0.140913" />
+    <PackageVersion Include="Roslynator.Analyzers" Version="4.15.0" />
+    <PackageVersion Include="xunit.analyzers" Version="1.26.0" />
+  </ItemGroup>
+</Project>

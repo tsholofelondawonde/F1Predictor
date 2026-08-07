@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Build & Verify
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Restore dependencies
+        run: dotnet restore clean-architecture.slnx
+
+      - name: Build
+        run: dotnet build clean-architecture.slnx --configuration Release --no-restore
+
+      # Uncomment when test projects are added under /tests/
+      # - name: Test
+      #   run: dotnet test clean-architecture.slnx --configuration Release --no-build --verbosity normal

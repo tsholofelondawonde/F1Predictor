@@ -1,0 +1,21 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.2.4">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UserSecretsId>eaa863b2-b133-46c8-81c1-214a1f390c49</UserSecretsId>
+    <!-- NU1903: MessagePack vulnerability — transitive dep of Aspire.AppHost.Sdk, not directly referenced. -->
+    <NoWarn>$(NoWarn);NU1903</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MessagePack" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\F1Predictor.WebApi\F1Predictor.WebApi.csproj" />
+  </ItemGroup>
+
+</Project>

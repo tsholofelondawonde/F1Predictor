@@ -1,259 +1,180 @@
-# F1 Race Predictor — Implementation Plan
+# F1 Race Predictor
 
 ## 1. Overview
 
-A single, self-contained .NET console app that proves out a predictive ML pipeline for
-F1 race outcomes: ingest historical race data from OpenF1, engineer a small feature set,
-train two binary classifiers (podium probability, points-finish probability), and print
-predictions for a held-out race to sanity-check the whole thing end to end.
+A Clean Architecture .NET solution that predicts F1 race outcomes: it ingests historical
+race data from OpenF1, engineers a small feature set, trains two binary classifiers
+(podium probability, points-finish probability), and serves both training and predictions
+over a minimal API.
 
-**This is a walking skeleton, not the production build.** No deadline, exploratory
-project — the goal is proving the pipeline works before making any part of it clever.
-Explicitly not in scope for this pass: Clean Architecture layering, a web API, a
-frontend, multi-season training, or tyre-strategy features. Those are the natural v2s
-once this runs and the holdout predictions look sane.
+This started as a flat console walking skeleton and has since been ported onto the layered
+scaffold produced by [CleanArchitectureGenerator](https://www.nuget.org/packages/CleanArchitectureGenerator)
+(`cleanarch new F1Predictor -d postgres --aspire`). The pipeline itself is unchanged — the
+same features, the same SDCA classifiers, the same holdout check — but each part now lives
+in the layer that owns it, and the console's `Console.WriteLine` reporting has become
+`Result<T>`-returning use cases behind HTTP endpoints.
 
-Flat project structure on purpose — one console app, no DI container, no repository
-abstraction. Don't introduce that ceremony until there's a second consumer (an API) that
-actually needs it.
+Still deliberately out of scope: a frontend, multi-season training, tyre-strategy features,
+and any ranking model. Those remain the natural next steps.
 
-## 2. Tech Stack & Packages
+## 2. Tech Stack
 
-- .NET console app (match whatever SDK `dotnet --version` reports locally — net10.0
-  assumed, drop to net9.0/net8.0 in the `.csproj` if needed)
-- `Microsoft.EntityFrameworkCore.Sqlite` — local file DB, zero external setup
-- `Microsoft.ML` — training (stable `SdcaLogisticRegression`, not the AutoML preview API)
-- `System.Net.Http.Json` — typed OpenF1 client
+| Concern | Choice |
+|---|---|
+| Framework | .NET 10, minimal APIs |
+| Orchestration | .NET Aspire (`F1Predictor.AppHost`) |
+| Database | PostgreSQL, hosted on [Neon](https://neon.tech) |
+| ORM | EF Core 10 + Npgsql |
+| CQRS | Scaffold's own `ICommandHandler<T,R>` / `IQueryHandler<T,R>` (no MediatR) |
+| Validation | FluentValidation, applied by a handler decorator |
+| ML | ML.NET 5 — `SdcaLogisticRegression`, not AutoML |
+| API docs | Scalar over OpenAPI, at `/scalar` |
 
-```bash
-dotnet new console -n F1Predictor
-cd F1Predictor
-dotnet add package Microsoft.EntityFrameworkCore.Sqlite
-dotnet add package Microsoft.ML
-dotnet add package System.Net.Http.Json
-```
+There is no container runtime on the development machine, so Aspire references Neon as an
+external connection string rather than provisioning a Postgres container.
 
 ## 3. Project Structure
 
 ```
 F1Predictor/
-  F1Predictor.csproj
-  Program.cs                       <- orchestrates the full pipeline, top to bottom
-  OpenF1/
-    Dtos.cs                        <- MeetingDto, SessionDto, StartingGridDto,
-                                       SessionResultDto, PitDto, WeatherDto
-    OpenF1Client.cs                <- typed HttpClient wrapper
-  Data/
-    Entities.cs                    <- raw + engineered EF Core entities
-    AppDbContext.cs                <- SQLite context
-  Ingestion/
-    SeasonIngestor.cs              <- meetings -> race sessions -> raw table rows
-  Features/
-    FeatureBuilder.cs              <- raw tables -> DriverRaceFeature rows
-  MachineLearning/
-    RaceFeatureInput.cs / RacePredictionOutput.cs
-    ModelTrainer.cs                <- train, evaluate, save, predict
+├── SharedKernel/                   Entity base, Result<T>, Error, domain event contracts
+├── F1Predictor.Domain/
+│   ├── RaceData/Entities/          Meeting, RaceSession, StartingGridEntry,
+│   │                               SessionResultEntry, PitStopEntry, WeatherReading
+│   └── Predictions/                DriverRaceFeature + the feature engineering rules
+├── F1Predictor.Application/
+│   ├── Abstractions/               IOpenF1Client, IModelTrainer, IRacePredictor,
+│   │                               IApplicationDbContext, ILegacyDatabaseImporter
+│   └── Features/                   Use cases, one folder per command/query
+├── F1Predictor.Infrastructure/
+│   ├── Database/                   ApplicationDbContext, configurations, migrations
+│   ├── OpenF1/                     Typed HTTP client + politeness delay handler
+│   ├── MachineLearning/            ML.NET trainer and predictor
+│   └── Legacy/                     One-off SQLite → Postgres import
+├── F1Predictor.WebApi/Endpoints/   One sealed class per endpoint
+├── F1Predictor.AppHost/            Aspire orchestration
+└── F1Predictor.ServiceDefaults/    Aspire telemetry/health defaults
 ```
 
-## 4. Data Source: OpenF1 API
+Dependencies point inward only. Domain references nothing but `SharedKernel`; Application
+defines the ports; Infrastructure implements them; WebApi composes.
 
-Base URL: `https://api.openf1.org/v1/`. No auth needed for historical data. Free tier
-covers **2023 onwards only** — pick a completed season (2023, 2024, 2025) for training.
-Add a ~200ms delay between calls; it's a free, community-run API, be a polite citizen
-rather than a load test.
+## 4. Data Source: OpenF1
 
-Endpoints used, and the exact JSON field names to map:
+Base URL `https://api.openf1.org/v1/`, no auth, **2023 onwards only** on the free tier.
 
 | Endpoint | Query by | Key fields |
 |---|---|---|
 | `meetings` | `year` | `meeting_key`, `year`, `circuit_short_name`, `country_name`, `meeting_name`, `date_start` |
 | `sessions` | `meeting_key` | `session_key`, `meeting_key`, `session_name`, `session_type`, `date_start` |
-| `starting_grid` | **race** `session_key` | `position`, `driver_number`, `lap_duration` |
+| `starting_grid` | **qualifying** `session_key` | `position`, `driver_number`, `lap_duration` |
 | `session_result` | **race** `session_key` | `driver_number`, `position` (nullable), `dnf`, `dns`, `dsq` |
-| `pit` | **race** `session_key` | `driver_number`, `stop_duration` (null before 2024 US GP — fall back to `lane_duration`), `lane_duration` |
+| `pit` | **race** `session_key` | `driver_number`, `stop_duration` (null before the 2024 US GP — falls back to `lane_duration`), `lane_duration` |
 | `weather` | **race** `session_key` | `rainfall` (0/1), `track_temperature` |
 
-**Important:** `starting_grid` is queried using the **race** session's `session_key`, not
-qualifying's — OpenF1 returns the grid for "the upcoming race" when you pass the race
-session key. There's no need to separately discover/ingest the qualifying session at all
-for this feature set.
+**The grid comes from the qualifying session, not the race session.** This was verified
+against live responses and contradicts what the original plan assumed, which is why
+`RaceSession` carries a `QualifyingSessionKey` pointer.
 
-Filter `sessions` results to `session_type == "Race"` to find the one session per meeting
-you actually need.
+Field names are snake_case throughout, so `OpenF1HttpClient` applies
+`JsonNamingPolicy.SnakeCaseLower` rather than annotating every DTO property.
 
-## 5. Data Model
+Politeness is enforced by `PolitenessDelayHandler`, a `DelegatingHandler` that spaces
+requests ~500ms apart across all callers. Retries and 429 handling come from the standard
+resilience pipeline, not hand-rolled loops.
 
-Raw tables (one row per API result, straight persistence, no transformation):
+## 5. Feature Engineering
 
-- `Meeting` — PK `MeetingKey`; `Year`, `CircuitShortName`, `CountryName`, `MeetingName`, `DateStart`
-- `RaceSession` — PK `SessionKey`; `MeetingKey`, `SessionName`, `SessionType`, `DateStart`
-- `StartingGridEntry` — `SessionKey`, `DriverNumber`, `Position`, `LapDuration` (nullable)
-- `SessionResultEntry` — `SessionKey`, `DriverNumber`, `Position` (nullable), `Dnf`, `Dns`, `Dsq`
-- `PitStopEntry` — `SessionKey`, `DriverNumber`, `StopDuration` (nullable), `LaneDuration` (nullable)
-- `WeatherReading` — `SessionKey`, `Rainfall`, `TrackTemperature`
+All rules live on `DriverRaceFeature` in the Domain, so there is exactly one definition of
+each. Per race session with both grid and result data:
 
-Engineered table (model-ready, one row per driver per race):
+- `polePace` = min `lap_duration` across the grid (drivers with no time excluded)
+- `rainedInSession` = any weather row with `rainfall > 0`
+- Per driver in `session_result` where `!Dns` and `Position` is not null:
+  - `GridPosition` — their grid position, or `grid count + 1` for a pit lane start
+  - `QualiGapToPole` — `lap_duration - polePace`, or the `99` sentinel if they set no time
+  - `PitStopCount`, `AvgPitStopDuration` — from `stop_duration ?? lane_duration`
+  - `Podium` = `Position <= 3 && !Dsq`; `PointsFinish` = `Position <= 10 && !Dsq`
 
-- `DriverRaceFeature` — `SessionKey`, `DriverNumber`, `GridPosition`, `QualiGapToPole`,
-  `PitStopCount`, `AvgPitStopDuration`, `Rainfall`, `FinishPosition`, `Podium` (bool),
-  `PointsFinish` (bool)
+`RebuildFeaturesCommand` clears and regenerates the whole table rather than updating it
+incrementally — cheap at this volume, and it rules out stale-feature bugs.
 
-EF Core notes: `Meeting`/`RaceSession` need explicit `HasKey` config since their PKs
-aren't named `Id`. Everything else uses the standard `Id` auto-increment convention.
-`OnConfiguring` points at a local SQLite file (`f1predictor.db`); use
-`Database.EnsureCreatedAsync()` at startup — no migrations needed for a throwaway proof
-of concept.
+## 6. Model Training
 
-## 6. Ingestion Flow
+Two independent binary classifiers over the same five features, differing only in label:
 
 ```
-IngestSeasonAsync(year):
-  meetings = GET meetings?year={year}
-  for each meeting:
-    upsert Meeting row
-    sessions = GET sessions?meeting_key={meeting.meeting_key}
-    raceSession = sessions.First(s => s.session_type == "Race")
-    if raceSession is null: skip (weekend hasn't happened yet)
-    if raceSession already ingested: skip (idempotent re-runs)
-
-    grid    = GET starting_grid?session_key={raceSession.session_key}
-    results = GET session_result?session_key={raceSession.session_key}
-    pits    = GET pit?session_key={raceSession.session_key}
-    weather = GET weather?session_key={raceSession.session_key}
-
-    if results is empty: skip (race not yet classified)
-
-    persist RaceSession, all StartingGridEntry/SessionResultEntry/PitStopEntry/WeatherReading rows
-    delay 200ms between each of the four calls above
-```
-
-Re-running ingestion for the same year is safe — already-ingested meetings/sessions are
-skipped rather than duplicated.
-
-## 7. Feature Engineering
-
-For each race session with both grid and result data:
-
-- `polePace` = min `lap_duration` across the grid (drivers with no lap time excluded)
-- `rainedInSession` = 1 if any weather row for the session has `rainfall > 0`, else 0
-- For each driver in `session_result` where `!Dns` and `Position` is not null:
-  - `GridPosition` = their grid `Position`, or `(grid count + 1)` if no grid entry (e.g. pit lane start)
-  - `QualiGapToPole` = their `lap_duration - polePace`, or `99` as a sentinel if they set no time (crash in Q1, grid penalty, etc. — not a proper imputation, flagged as a known rough edge)
-  - `PitStopCount` = count of their `pit` rows in the session
-  - `AvgPitStopDuration` = average of `stop_duration ?? lane_duration` across their stops, or `0` if none
-  - `Rainfall` = `rainedInSession`
-  - `FinishPosition` = their result `Position`
-  - `Podium` = `Position <= 3 && !Dsq`
-  - `PointsFinish` = `Position <= 10 && !Dsq`
-
-Rebuild the whole feature table from raw data each time (`FeatureBuilder` clears and
-regenerates) rather than incrementally updating it — cheap at this data volume, and
-avoids a whole class of "stale feature" bugs while the logic is still being tuned.
-
-## 8. Model Training
-
-Two independent binary classifiers, same feature set, different labels: podium and
-points-finish. Not a ranking model — deliberately scoped down, see prior discussion on
-why ranking is a v2+ problem.
-
-**Primary approach — hand-written pipeline, not AutoML:**
-
-```
-pipeline =
-  Concatenate("Features", GridPosition, QualiGapToPole, PitStopCount, AvgPitStopDuration, Rainfall)
+Concatenate("Features", GridPosition, QualiGapToPole, PitStopCount, AvgPitStopDuration, Rainfall)
   -> NormalizeMinMax("Features")
-  -> SdcaLogisticRegression(labelColumnName: "Label", featureColumnName: "Features")
+  -> SdcaLogisticRegression(labelColumnName: "Label")
 ```
 
-- 80/20 train/test split, seeded for reproducibility
-- Evaluate with `BinaryClassification.Evaluate` — report **AUC and F1, not raw accuracy**.
-  Podium is ~15% of rows, so "always predict no" already scores ~85% accuracy while being
-  useless. This matters enough to bear repeating in the code's own console output.
-- Save each trained model via `mlContext.Model.Save(model, schema, "podium-model.zip")` /
-  `"points-model.zip"`
+80/20 split, seed 42 for reproducibility. Models are saved to the directory configured at
+`MachineLearning:ModelDirectory` (default `models/`).
 
-**Why not AutoML for v1:** Microsoft's own docs mark the ML.NET AutoML API "preview" —
-don't gate a first working run on an API surface that might have shifted between package
-versions. Get the guaranteed-stable SDCA pipeline running first.
+**Read AUC and F1, never accuracy.** Podium is ~15% of rows, so "always predict no" scores
+~85% accuracy while being useless. `TrainModelsResponse` carries this warning in the payload
+itself for that reason. AUC near 0.5 is noise; grid position alone should clear 0.65.
 
-**Optional upgrade path (v2):** once SDCA runs cleanly, add
-`dotnet add package Microsoft.ML.AutoML` and let `mlContext.Auto()` sweep trainers and
-hyperparameters instead of hand-picking SDCA. Same train/test split and evaluation
-approach, swap the pipeline construction only.
+Not AutoML: ML.NET's AutoML API is still preview, and a working baseline should not depend
+on a shifting surface. Swapping it in later means replacing pipeline construction only.
 
-## 9. Prediction / Holdout Validation
+## 7. Endpoints
 
-Before training, pick the **single most recently run race** in the ingested season and
-exclude it entirely from the training set. After training both models, run predictions
-for every driver in that held-out race and print a table: driver number, grid position,
-actual finish position, whether they actually podiumed, and both models' predicted
-probabilities. This is the "did this thing learn anything real" check — no formal
-backtesting harness needed yet, just eyeball it.
+| Method | Route | Purpose |
+|---|---|---|
+| POST | `/api/seasons/{year}/ingest` | Ingest a season from OpenF1 (~1–2 min, idempotent) |
+| GET | `/api/seasons/{year}/races` | List ingested races with their session keys |
+| POST | `/api/features/rebuild` | Regenerate the feature table |
+| POST | `/api/models/train?year=` | Train both models, return metrics |
+| GET | `/api/seasons/{year}/holdout` | Predictions vs. reality for the held-out race |
+| GET | `/api/races/{sessionKey}/predictions` | Per-driver probabilities for one race |
+| POST | `/api/admin/import-legacy-sqlite` | One-off SQLite import (**Development only**) |
+| GET | `/health` | Health check |
 
-## 10. Execution Flow (`Program.cs`)
+## 8. Setup & Run
 
-Single top-to-bottom run, no subcommands — `dotnet run -- 2024`:
-
-1. Ingest season → raw tables in SQLite
-2. Build features → `DriverRaceFeature` table
-3. Bail out early with a clear message if fewer than 3 races have usable feature data
-   (season not yet run, or a bad year argument)
-4. Identify holdout race (most recent by `date_start`), exclude from training set
-5. Train podium model, print metrics
-6. Train points model, print metrics
-7. Predict holdout race, print comparison table
-8. Print final summary (model file paths, DB file path)
-
-## 11. Build Order
-
-1. **Scaffold** — project + package references, confirm `dotnet build` succeeds with
-   empty `Program.cs`
-2. **OpenF1 client** — DTOs + client methods, manually test against one known
-   `session_key` before writing any orchestration; confirm deserialization actually works
-   against live responses
-3. **Ingestion** — raw table persistence only, no features yet; run against one season,
-   confirm row counts look sane (~20 drivers × ~24 races)
-4. **Feature builder** — dumb features first (grid position, finish position only) to
-   prove the shape works, then add pit/weather features
-5. **Training** — SDCA pipeline, confirm it trains and produces non-garbage AUC (>0.5,
-   ideally >0.65 given grid position alone is a decent podium predictor)
-6. **Holdout prediction** — wire up the final comparison table
-
-Don't skip ahead to step 6 before step 5 produces sane metrics — a model with AUC ~0.5 is
-noise, and a nice-looking prediction table built on it is worse than useless, it's
-actively misleading.
-
-## 12. Known V1 Scope Cuts
-
-- No tyre/strategy features (`stints` endpoint not ingested) — grid position and pit
-  stops only
-- Single season (~480 driver-race rows) — enough to prove the concept, not enough to
-  trust the model's opinion about anything
-- `QualiGapToPole = 99` sentinel instead of proper imputation for missing lap times
-- No repository/DI abstraction — fine for a console app, not what you'd want once an API
-  sits on top
-- No multi-season blending, no track-specific or constructor-form features
-
-## 13. Next Steps (v2 candidates, in rough priority order)
-
-1. Confirm the pipeline runs and holdout predictions look directionally sane
-2. Ingest 2-3 seasons instead of one for a less anemic training set
-3. Add `stints` endpoint → tyre compound/strategy features
-4. Try the AutoML upgrade path once SDCA baseline is trusted
-5. Port into Clean Architecture layers (Domain/Application/Infrastructure/Api) with
-   `PredictionEnginePool` serving the saved `.zip` models over an endpoint
-6. React frontend: race selector + predicted probability table
-
-## 14. Setup & Run
+The connection string carries a password, so it belongs in user secrets, never in
+`appsettings.json`:
 
 ```bash
-cd F1Predictor
-dotnet add package Microsoft.EntityFrameworkCore.Sqlite
-dotnet add package Microsoft.ML
-dotnet add package System.Net.Http.Json
-dotnet build
-dotnet run -- 2024
+dotnet user-secrets set "ConnectionStrings:LocalDb" "<your Neon connection string>" \
+  --project F1Predictor.AppHost
 ```
 
-`f1predictor.db` (SQLite) and both `.zip` models land in the working directory.
-Re-running with the same year is safe — ingestion skips already-fetched meetings.
+Neon requires SSL — the string should include `SSL Mode=Require;Trust Server Certificate=true`.
+
+```bash
+dotnet build F1Predictor.slnx
+aspire run
+```
+
+Migrations are applied automatically at startup in Development, so there is no separate
+`dotnet ef database update` step. To add a migration after a model change:
+
+```bash
+dotnet ef migrations add <Name> --project F1Predictor.Infrastructure \
+  --startup-project F1Predictor.WebApi --context ApplicationDbContext \
+  --output-dir Database\Migrations
+```
+
+`--context` is required because the legacy SQLite import declares a second `DbContext`.
+
+Then, from `/scalar`: ingest a season → rebuild features → train → read the holdout table.
+
+## 9. Known Scope Cuts
+
+- No tyre/strategy features (`stints` endpoint not ingested)
+- Single season (~480 driver-race rows) — enough to prove the pipeline, not enough to trust
+- `QualiGapToPole = 99` sentinel instead of proper imputation
+- Ingestion runs synchronously inside the request; a background queue is a later concern
+- `LegacySqliteImporter` and the SQLite package reference are temporary and should be
+  deleted once the prototype's data is safely across
+
+## 10. Next Steps
+
+1. Ingest 2–3 seasons instead of one for a less anemic training set
+2. Add the `stints` endpoint → tyre compound/strategy features
+3. Try the AutoML upgrade path once the SDCA baseline is trusted
+4. React frontend: race selector + predicted probability table
+5. Move ingestion onto a background queue so the endpoint returns 202 immediately

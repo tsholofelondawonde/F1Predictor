@@ -45,6 +45,14 @@ internal sealed class OpenF1HttpClient(HttpClient httpClient) : IOpenF1Client
     {
         var response = await httpClient.GetAsync(new Uri(requestUri, UriKind.Relative), cancellationToken);
 
+        // OpenF1 is inconsistent about "no rows": most list endpoints return 200 with an
+        // empty array, but some (e.g. pit) return 404 with {"detail":"No results found."}
+        // for a session that simply has none. Both mean the same thing to callers here.
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return [];
+        }
+
         response.EnsureSuccessStatusCode();
 
         var payload = await response.Content

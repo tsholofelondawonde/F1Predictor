@@ -11,7 +11,13 @@ var builder = DistributedApplication.CreateBuilder(args);
 // "LocalDb" is the key the Infrastructure layer already resolves for development.
 var database = builder.AddConnectionString("LocalDb");
 
-builder.AddProject<Projects.F1Predictor_WebApi>("F1Predictor-webapi")
-    .WithReference(database);
+var webApi = builder.AddProject<Projects.F1Predictor_WebApi>("F1Predictor-webapi")
+    .WithReference(database)
+    .WithHttpEndpoint(port: 5286, name: "http");
+
+builder.AddJavaScriptApp("f1predictor-web", "../F1Predictor.Web")
+    .WithHttpEndpoint(port: 3000, env: "PORT")
+    .WithEnvironment("NEXT_PUBLIC_API_URL", webApi.GetEndpoint("http"))
+    .WithExternalHttpEndpoints();
 
 await builder.Build().RunAsync();

@@ -14,6 +14,13 @@ var builder = WebApplication.CreateBuilder(args);
 // GENERATOR_ASPIRE_TOKEN: WITHOUT_ASPIRE
 builder.Services.AddObservability(builder.Environment, builder.Configuration);
 
+const string FrontendCorsPolicy = "Frontend";
+
+builder.Services.AddCors(options => options.AddPolicy(FrontendCorsPolicy, policy =>
+    policy.WithOrigins(builder.Configuration["Frontend:BaseUrl"] ?? "http://localhost:3000")
+          .AllowAnyHeader()
+          .AllowAnyMethod()));
+
 builder.Services
     .AddOpenApi()
     .AddResponseCompression()
@@ -23,7 +30,11 @@ builder.Services
 
 var app = builder.Build();
 
-app.MapDefaultEndpoints();
+// GENERATOR_ASPIRE_TOKEN: WITH_ASPIRE
+// app.MapDefaultEndpoints();
+// Paired with the commented-out builder.AddServiceDefaults() above — calling this without
+// it maps a second "/health" endpoint alongside the app's own MapHealthChecks below and
+// makes every request to it fail with AmbiguousMatchException.
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -35,13 +46,21 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+// Skipped in Development: the AppHost only pins an HTTP endpoint (see AppHost.cs), so a
+// redirect to the launchSettings https profile's port would point at a port nothing is
+// bound to under Aspire orchestration.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseRequestContextLogging();
 
 app.UseResponseCompression();
 
 app.UseRouting();
+
+app.UseCors(FrontendCorsPolicy);
 
 if (app.Environment.IsDevelopment())
 {

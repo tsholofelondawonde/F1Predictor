@@ -12,32 +12,49 @@ public sealed record IngestSeasonResponse(
 
 /// <param name="MeetingName">Name of the race weekend.</param>
 /// <param name="Outcome">What happened to it — see <see cref="IngestOutcome"/>.</param>
+/// <param name="SessionsIngested">Points-scoring sessions persisted with results. Two on a sprint weekend.</param>
+/// <param name="SessionsScheduled">Sessions recorded without results because they have not run yet.</param>
 /// <param name="ResultCount">Classified driver results persisted.</param>
 /// <param name="GridCount">Grid entries persisted.</param>
 /// <param name="PitStopCount">Pit stops persisted.</param>
 /// <param name="WeatherReadingCount">Weather samples persisted.</param>
+/// <param name="DriverEntryCount">Entry-list rows persisted — the only source of driver names and teams.</param>
 public sealed record IngestedMeeting(
     string MeetingName,
     IngestOutcome Outcome,
+    int SessionsIngested,
+    int SessionsScheduled,
     int ResultCount,
     int GridCount,
     int PitStopCount,
-    int WeatherReadingCount);
+    int WeatherReadingCount,
+    int DriverEntryCount)
+{
+    /// <summary>A weekend that produced no writes at all.</summary>
+    internal static IngestedMeeting NothingToDo(string meetingName, IngestOutcome outcome) =>
+        new(meetingName, outcome, 0, 0, 0, 0, 0, 0, 0);
+}
 
 /// <summary>
-/// Why a race weekend was or wasn't ingested.
+/// Why a race weekend was or wasn't ingested. Where a weekend's sessions disagree — a sprint
+/// that has run alongside a Grand Prix that hasn't — the most significant outcome wins.
 /// </summary>
 public enum IngestOutcome
 {
     /// <summary>Race data was fetched and persisted by this run.</summary>
     Ingested,
-
     /// <summary>Already in the database from an earlier run.</summary>
     AlreadyPresent,
-
     /// <summary>OpenF1 has no race session for the weekend yet.</summary>
     NoRaceSession,
-
-    /// <summary>The race exists but has not been classified, so there is nothing to learn from.</summary>
-    NotClassified
+    /// <summary>
+    /// No longer produced — an unclassified race is now recorded as <see cref="Scheduled"/>.
+    /// Retained so the numeric values clients already map against do not shift.
+    /// </summary>
+    NotClassified,
+    /// <summary>
+    /// The race has not run yet. Its session and entry list were recorded anyway so it can be
+    /// found as the next race and previewed.
+    /// </summary>
+    Scheduled
 }

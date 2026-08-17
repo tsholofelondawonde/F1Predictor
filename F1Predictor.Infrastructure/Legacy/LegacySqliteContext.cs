@@ -30,5 +30,12 @@ internal sealed class LegacySqliteContext(DbContextOptions<LegacySqliteContext> 
         modelBuilder.Entity<Meeting>().HasKey(m => m.MeetingKey);
         modelBuilder.Entity<RaceSession>().HasKey(s => s.SessionKey);
         modelBuilder.Entity<PitStopEntry>().Ignore(p => p.EffectiveDuration);
+
+        // Championship columns, added long after the prototype was retired. Selecting them
+        // would fail against a file whose tables have never had them; the importer sets
+        // sensible values on the way in instead.
+        modelBuilder.Entity<RaceSession>().Ignore(s => s.IsSprint);
+        modelBuilder.Entity<RaceSession>().Ignore(s => s.IsClassified);
+        modelBuilder.Entity<SessionResultEntry>().Ignore(r => r.Points);
     }
 }

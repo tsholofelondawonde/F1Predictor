@@ -38,19 +38,10 @@ internal sealed class PredictRaceQueryHandler(
             select meeting.MeetingName)
             .FirstOrDefaultAsync(cancellationToken) ?? "Unknown meeting";
 
+        var directory = await DriverDirectory.ForSessionAsync(context, query.SessionKey, cancellationToken);
+
         var drivers = features
-            .Select(feature =>
-            {
-                var probabilities = predictor.Predict(feature);
-                return new DriverPrediction(
-                    feature.DriverNumber,
-                    feature.GridPosition,
-                    feature.FinishPosition,
-                    feature.Podium,
-                    feature.PointsFinish,
-                    probabilities.PodiumProbability,
-                    probabilities.PointsProbability);
-            })
+            .Select(feature => directory.Describe(feature, predictor.Predict(feature)))
             .OrderByDescending(d => d.PodiumProbability)
             .ToList();
 

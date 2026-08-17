@@ -14,6 +14,7 @@ public interface IApplicationDbContext
     public DbSet<SessionResultEntry> SessionResultEntries { get; set; }
     public DbSet<PitStopEntry> PitStopEntries { get; set; }
     public DbSet<WeatherReading> WeatherReadings { get; set; }
+    public DbSet<DriverEntry> DriverEntries { get; set; }
 
     /// <summary>Model-ready rows derived from the raw tables above.</summary>
     public DbSet<DriverRaceFeature> DriverRaceFeatures { get; set; }

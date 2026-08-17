@@ -83,6 +83,15 @@ internal sealed class LegacySqliteImporter(ApplicationDbContext target) : ILegac
         List<DriverRaceFeature> features,
         CancellationToken cancellationToken)
     {
+        // The prototype only ever stored completed Grands Prix, so every imported session is a
+        // classified non-sprint. It never captured points, though, which is why imported rows
+        // score zero until the season is re-ingested with force.
+        sessions.ForEach(s =>
+        {
+            s.IsSprint = false;
+            s.IsClassified = true;
+        });
+
         grid.ForEach(g => g.Id = 0);
         results.ForEach(r => r.Id = 0);
         pits.ForEach(p => p.Id = 0);

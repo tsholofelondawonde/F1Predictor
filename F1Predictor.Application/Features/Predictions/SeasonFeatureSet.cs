@@ -47,10 +47,12 @@ internal sealed class SeasonFeatureSet
         int year,
         CancellationToken cancellationToken)
     {
+        // Grands Prix only, matching the feature rebuild — a sprint is a different kind of race
+        // and must never become a training row or the holdout. See RaceSession.IsSprint.
         var races = await (
             from session in context.RaceSessions
             join meeting in context.Meetings on session.MeetingKey equals meeting.MeetingKey
-            where meeting.Year == year
+            where meeting.Year == year && !session.IsSprint && session.IsClassified
             orderby session.DateStart descending
             select new SeasonRace(
                 session.SessionKey,

@@ -58,6 +58,12 @@ public static class DependencyInjection
         // Register validators from this assembly (including internal types)
         services.AddValidatorsFromAssembly(assembly, includeInternalTypes: true);
 
+        // Backs the championship simulation cache. The dashboard polls the forecast on a timer
+        // and two use cases share the same run, so without this the same ten thousand seasons
+        // would be simulated several times a minute for an answer that only moves when a race is
+        // ingested. See Features/Championship/CachedForecast.
+        services.AddMemoryCache();
+
         return services;
     }
 }

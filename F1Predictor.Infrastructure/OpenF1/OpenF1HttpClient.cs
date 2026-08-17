@@ -41,6 +41,9 @@ internal sealed class OpenF1HttpClient(HttpClient httpClient) : IOpenF1Client
     public Task<IReadOnlyList<OpenF1Weather>> GetWeatherAsync(int sessionKey, CancellationToken cancellationToken) =>
         GetAsync<OpenF1Weather>($"weather?session_key={sessionKey}", cancellationToken);
 
+    public Task<IReadOnlyList<OpenF1Driver>> GetDriversAsync(int sessionKey, CancellationToken cancellationToken) =>
+        GetAsync<OpenF1Driver>($"drivers?session_key={sessionKey}", cancellationToken);
+
     private async Task<IReadOnlyList<T>> GetAsync<T>(string requestUri, CancellationToken cancellationToken)
     {
         var response = await httpClient.GetAsync(new Uri(requestUri, UriKind.Relative), cancellationToken);

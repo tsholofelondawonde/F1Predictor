@@ -30,7 +30,7 @@ export function ChampionshipView({ year }: ChampionshipViewProps) {
       <ErrorBanner
         title="No results yet"
         message={`Nothing has been ingested for ${year}. Ingest the season first.`}
-        action={{ label: "Go to dashboard", href: "/" }}
+        action={{ label: "Go to dashboard", href: "/dashboard" }}
       />
     );
   }

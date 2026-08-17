@@ -39,7 +39,7 @@ export function NextRaceView({ year }: NextRaceViewProps) {
       <ErrorBanner
         title="Models not trained yet"
         message="Train the models for this season before previewing the next race."
-        action={{ label: "Go train models", href: "/" }}
+        action={{ label: "Go train models", href: "/dashboard" }}
       />
     );
   }
@@ -49,7 +49,7 @@ export function NextRaceView({ year }: NextRaceViewProps) {
       <ErrorBanner
         title="No upcoming race"
         message={`Every ${year} Grand Prix that has been ingested already has results. Re-ingest the season to pick up the rest of the calendar.`}
-        action={{ label: "Go to dashboard", href: "/" }}
+        action={{ label: "Go to dashboard", href: "/dashboard" }}
       />
     );
   }

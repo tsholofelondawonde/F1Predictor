@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const TABS = [
-  { href: "/", label: "Dashboard" },
+  { href: "/dashboard", label: "Dashboard" },
   { href: "/next-race", label: "Next Race" },
   { href: "/championship", label: "Championship" },
   { href: "/scenarios", label: "Scenarios" },
@@ -12,9 +12,7 @@ const TABS = [
 ] as const;
 
 function isActive(pathname: string, href: string): boolean {
-  // Every path starts with "/", so the root tab has to match exactly or it would
-  // stay highlighted on every other page.
-  return href === "/" ? pathname === "/" : pathname.startsWith(href);
+  return pathname.startsWith(href);
 }
 
 export function TabNav() {

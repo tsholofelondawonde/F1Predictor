@@ -48,7 +48,7 @@ export function HoldoutView({ year }: HoldoutViewProps) {
       <ErrorBanner
         title="Models not trained yet"
         message={`Train the models for ${year} before viewing the holdout race.`}
-        action={{ label: "Go train models", href: "/" }}
+        action={{ label: "Go train models", href: "/dashboard" }}
       />
     );
   }

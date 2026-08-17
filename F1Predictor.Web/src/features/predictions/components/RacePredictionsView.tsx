@@ -48,7 +48,7 @@ export function RacePredictionsView({ sessionKey }: RacePredictionsViewProps) {
       <ErrorBanner
         title="Models not trained yet"
         message="Train the models for this season before viewing predictions."
-        action={{ label: "Go train models", href: "/" }}
+        action={{ label: "Go train models", href: "/dashboard" }}
       />
     );
   }

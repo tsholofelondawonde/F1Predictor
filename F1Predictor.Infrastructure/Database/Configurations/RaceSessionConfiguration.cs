@@ -17,5 +17,9 @@ internal sealed class RaceSessionConfiguration : IEntityTypeConfiguration<RaceSe
 
         builder.HasIndex(s => s.MeetingKey);
         builder.HasIndex(s => s.DateStart);
+
+        // Every training and standings query filters on these two, and the "next race"
+        // lookup is an ordered scan of the unclassified rows.
+        builder.HasIndex(s => new { s.IsSprint, s.IsClassified });
     }
 }

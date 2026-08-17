@@ -69,6 +69,48 @@ namespace F1Predictor.Infrastructure.Database.Migrations
                     b.ToTable("DriverRaceFeatures", "public");
                 });
 
+            modelBuilder.Entity("F1Predictor.Domain.RaceData.Entities.DriverEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("DriverNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("NameAcronym")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<int>("SessionKey")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TeamColour")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("TeamName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SessionKey", "DriverNumber")
+                        .IsUnique();
+
+                    b.ToTable("DriverEntries", "public");
+                });
+
             modelBuilder.Entity("F1Predictor.Domain.RaceData.Entities.Meeting", b =>
                 {
                     b.Property<int>("MeetingKey")
@@ -137,6 +179,12 @@ namespace F1Predictor.Infrastructure.Database.Migrations
                     b.Property<DateTimeOffset>("DateStart")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("IsClassified")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsSprint")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("MeetingKey")
                         .HasColumnType("integer");
 
@@ -158,6 +206,8 @@ namespace F1Predictor.Infrastructure.Database.Migrations
                     b.HasIndex("DateStart");
 
                     b.HasIndex("MeetingKey");
+
+                    b.HasIndex("IsSprint", "IsClassified");
 
                     b.ToTable("RaceSessions", "public");
                 });
@@ -181,6 +231,9 @@ namespace F1Predictor.Infrastructure.Database.Migrations
 
                     b.Property<bool>("Dsq")
                         .HasColumnType("boolean");
+
+                    b.Property<double>("Points")
+                        .HasColumnType("double precision");
 
                     b.Property<int?>("Position")
                         .HasColumnType("integer");

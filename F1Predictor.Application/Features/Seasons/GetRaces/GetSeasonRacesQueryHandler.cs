@@ -23,6 +23,8 @@ internal sealed class GetSeasonRacesQueryHandler(IApplicationDbContext context)
                 meeting.CircuitShortName,
                 meeting.CountryName,
                 session.DateStart,
+                session.IsSprint,
+                session.IsClassified,
                 context.DriverRaceFeatures.Count(f => f.SessionKey == session.SessionKey)))
             .AsNoTracking()
             .ToListAsync(cancellationToken);

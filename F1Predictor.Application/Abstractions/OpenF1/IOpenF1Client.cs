@@ -24,4 +24,13 @@ public interface IOpenF1Client
     Task<IReadOnlyList<OpenF1Pit>> GetPitStopsAsync(int sessionKey, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<OpenF1Weather>> GetWeatherAsync(int sessionKey, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The entry list for a session: driver names, teams and colours.
+    /// </summary>
+    /// <remarks>
+    /// Populated for sessions that have not run yet, which is what makes previewing an
+    /// upcoming race with real drivers possible.
+    /// </remarks>
+    Task<IReadOnlyList<OpenF1Driver>> GetDriversAsync(int sessionKey, CancellationToken cancellationToken);
 }

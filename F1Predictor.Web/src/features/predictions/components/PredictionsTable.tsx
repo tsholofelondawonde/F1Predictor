@@ -1,4 +1,5 @@
 import type { DriverPrediction } from "@/features/predictions/predictions-types";
+import { TeamColour } from "@/shared/components/TeamColour";
 
 interface PredictionsTableProps {
   drivers: DriverPrediction[];
@@ -14,7 +15,8 @@ export function PredictionsTable({ drivers }: PredictionsTableProps) {
       <table className="w-full min-w-[640px] text-left text-sm">
         <thead>
           <tr className="border-b border-(--color-border) text-(--color-muted)">
-            <th className="py-2 pr-3 font-medium">Driver #</th>
+            <th className="py-2 pr-3 font-medium">Driver</th>
+            <th className="py-2 pr-3 font-medium">Team</th>
             <th className="py-2 pr-3 font-medium">Grid</th>
             <th className="py-2 pr-3 font-medium">Finish</th>
             <th className="py-2 pr-3 font-medium">Podium %</th>
@@ -26,7 +28,14 @@ export function PredictionsTable({ drivers }: PredictionsTableProps) {
         <tbody>
           {drivers.map((driver) => (
             <tr key={driver.driverNumber} className="border-b border-(--color-border) last:border-0">
-              <td className="py-2 pr-3 font-mono">{driver.driverNumber}</td>
+              <td className="py-2 pr-3">
+                <span className="flex items-center gap-2">
+                  <TeamColour colour={driver.teamColour} title={driver.teamName} />
+                  <span className="font-medium">{driver.fullName}</span>
+                  <span className="font-mono text-xs text-(--color-muted)">{driver.driverNumber}</span>
+                </span>
+              </td>
+              <td className="py-2 pr-3 text-(--color-muted)">{driver.teamName}</td>
               <td className="py-2 pr-3">{driver.gridPosition}</td>
               <td className="py-2 pr-3">{driver.finishPosition}</td>
               <td className="py-2 pr-3 font-mono text-(--color-podium)">{formatPercent(driver.podiumProbability)}</td>

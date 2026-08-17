@@ -12,6 +12,13 @@ public class SessionResultEntry
     /// <summary>Finishing position. Null when the driver was not classified.</summary>
     public int? Position { get; set; }
 
+    /// <summary>
+    /// Championship points awarded, straight from OpenF1. Taking the number rather than
+    /// deriving it from <see cref="Position"/> means the sprint scale and any fastest-lap
+    /// rule come for free, and a rule change never needs a code change here.
+    /// </summary>
+    public double Points { get; set; }
+
     public bool Dnf { get; set; }
     public bool Dns { get; set; }
     public bool Dsq { get; set; }

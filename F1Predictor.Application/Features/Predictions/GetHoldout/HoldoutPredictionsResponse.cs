@@ -15,6 +15,10 @@ public sealed record HoldoutPredictionsResponse(
     IReadOnlyList<DriverPrediction> Drivers);
 
 /// <param name="DriverNumber">Car number.</param>
+/// <param name="FullName">Driver's full name, or a car-number placeholder if no entry list was ingested.</param>
+/// <param name="NameAcronym">Three-letter abbreviation.</param>
+/// <param name="TeamName">Constructor they drove for.</param>
+/// <param name="TeamColour">Six-digit hex team colour, no leading hash.</param>
 /// <param name="GridPosition">Where they started.</param>
 /// <param name="FinishPosition">Where they actually finished.</param>
 /// <param name="ActualPodium">Whether they actually made the podium.</param>
@@ -23,6 +27,10 @@ public sealed record HoldoutPredictionsResponse(
 /// <param name="PointsProbability">Model's predicted points-finish probability.</param>
 public sealed record DriverPrediction(
     int DriverNumber,
+    string FullName,
+    string NameAcronym,
+    string TeamName,
+    string TeamColour,
     float GridPosition,
     int FinishPosition,
     bool ActualPodium,

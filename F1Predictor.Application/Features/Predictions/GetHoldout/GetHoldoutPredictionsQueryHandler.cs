@@ -29,19 +29,11 @@ internal sealed class GetHoldoutPredictionsQueryHandler(
                 "There is no race data for that season yet."));
         }
 
+        var directory = await DriverDirectory.ForSessionAsync(
+            context, season.Holdout.SessionKey, cancellationToken);
+
         var drivers = season.HoldoutFeatures
-            .Select(feature =>
-            {
-                var probabilities = predictor.Predict(feature);
-                return new DriverPrediction(
-                    feature.DriverNumber,
-                    feature.GridPosition,
-                    feature.FinishPosition,
-                    feature.Podium,
-                    feature.PointsFinish,
-                    probabilities.PodiumProbability,
-                    probabilities.PointsProbability);
-            })
+            .Select(feature => directory.Describe(feature, predictor.Predict(feature)))
             .ToList();
 
         var response = new HoldoutPredictionsResponse(

@@ -18,6 +18,7 @@ public class ApplicationDbContext(
     public DbSet<SessionResultEntry> SessionResultEntries { get; set; } = null!;
     public DbSet<PitStopEntry> PitStopEntries { get; set; } = null!;
     public DbSet<WeatherReading> WeatherReadings { get; set; } = null!;
+    public DbSet<DriverEntry> DriverEntries { get; set; } = null!;
     public DbSet<DriverRaceFeature> DriverRaceFeatures { get; set; } = null!;
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

@@ -22,7 +22,14 @@ internal sealed class RebuildFeaturesCommandHandler(
         // The whole raw dataset is a few thousand rows, so pull it once and group in memory
         // rather than issuing four queries per race — the database is remote and round trips
         // dominate at this size.
-        var sessions = await context.RaceSessions.AsNoTracking().ToListAsync(cancellationToken);
+        // Grands Prix only. Sprints score championship points and so are ingested, but they are
+        // a third of the distance on a different points scale and usually without a pit stop —
+        // "podium" and "points finish" do not mean the same thing there, and mixing them in
+        // would quietly corrupt both labels. Unclassified races have no results to learn from.
+        var sessions = await context.RaceSessions
+            .Where(s => !s.IsSprint && s.IsClassified)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
         var gridBySession = (await context.StartingGridEntries.AsNoTracking().ToListAsync(cancellationToken))
             .ToLookup(g => g.SessionKey);
         var resultsBySession = (await context.SessionResultEntries.AsNoTracking().ToListAsync(cancellationToken))

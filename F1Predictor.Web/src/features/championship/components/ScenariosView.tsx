@@ -9,6 +9,7 @@ import { LiveFooter } from "@/shared/components/LiveFooter";
 import { formatProbability, ProbabilityBar } from "@/shared/components/ProbabilityBar";
 import { CardSkeleton } from "@/shared/components/Skeleton";
 import { TeamColour, teamColourCss } from "@/shared/components/TeamColour";
+import { getErrorDisplay } from "@/shared/lib/error-display";
 import { useLiveData } from "@/shared/lib/use-live-data";
 
 interface ScenariosViewProps {
@@ -57,7 +58,8 @@ export function ScenariosView({ year }: ScenariosViewProps) {
   }
 
   if (error) {
-    return <ErrorBanner title="Something went wrong" message={error.userMessage} />;
+    const { title, message } = getErrorDisplay(error);
+    return <ErrorBanner title={title} message={message} />;
   }
 
   if (!data) {

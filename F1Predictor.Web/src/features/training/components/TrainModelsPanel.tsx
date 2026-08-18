@@ -1,32 +1,15 @@
 "use client";
 
-import { useState } from "react";
 import { useSeasonsStore } from "@/features/seasons/seasons-store";
 import { trainModels } from "@/features/training/training-service";
-import type { TrainModelsResponse } from "@/features/training/training-types";
 import { ModelMetricCard } from "@/features/training/components/ModelMetricCard";
 import { Button } from "@/shared/components/Button";
 import { Card } from "@/shared/components/Card";
-import { ApiError } from "@/shared/lib/api-error";
+import { useAsyncAction } from "@/shared/lib/use-async-action";
 
 export function TrainModelsPanel() {
   const selectedYear = useSeasonsStore((state) => state.selectedYear);
-  const [status, setStatus] = useState<"idle" | "running" | "success" | "error">("idle");
-  const [result, setResult] = useState<TrainModelsResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleTrain() {
-    setStatus("running");
-    setError(null);
-    try {
-      const response = await trainModels(selectedYear);
-      setResult(response);
-      setStatus("success");
-    } catch (err) {
-      setError(err instanceof ApiError ? err.userMessage : "Training failed unexpectedly.");
-      setStatus("error");
-    }
-  }
+  const { status, result, error, run } = useAsyncAction(trainModels);
 
   return (
     <Card title="3. Train models">
@@ -34,11 +17,11 @@ export function TrainModelsPanel() {
         Trains the podium and points-finish classifiers on {selectedYear} data, holding out the most recent
         race for the holdout view.
       </p>
-      <Button onClick={handleTrain} disabled={status === "running"}>
+      <Button onClick={() => run(selectedYear)} disabled={status === "running"}>
         {status === "running" ? "Training…" : `Train on ${selectedYear}`}
       </Button>
 
-      {status === "error" && error && <p className="mt-3 text-sm text-(--color-error-text)">{error}</p>}
+      {status === "error" && error && <p className="mt-3 text-sm text-(--color-error-text)">{error.message}</p>}
 
       {status === "success" && result && (
         <div className="mt-4 space-y-3">

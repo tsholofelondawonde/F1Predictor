@@ -8,6 +8,7 @@ import { Card } from "@/shared/components/Card";
 import { ErrorBanner } from "@/shared/components/ErrorBanner";
 import { TableSkeleton } from "@/shared/components/Skeleton";
 import { ApiError } from "@/shared/lib/api-error";
+import { getErrorDisplay } from "@/shared/lib/error-display";
 
 interface RacePredictionsViewProps {
   sessionKey: number;
@@ -63,7 +64,8 @@ export function RacePredictionsView({ sessionKey }: RacePredictionsViewProps) {
   }
 
   if (error) {
-    return <ErrorBanner title="Something went wrong" message={error.userMessage} />;
+    const { title, message } = getErrorDisplay(error);
+    return <ErrorBanner title={title} message={message} />;
   }
 
   if (!data) {

@@ -7,6 +7,7 @@ import { getSeasonRaces } from "@/features/seasons/seasons-service";
 import type { SeasonRace } from "@/features/seasons/seasons-types";
 import { Card } from "@/shared/components/Card";
 import { ApiError } from "@/shared/lib/api-error";
+import { getErrorDisplay } from "@/shared/lib/error-display";
 
 export function RaceList() {
   const selectedYear = useSeasonsStore((state) => state.selectedYear);
@@ -24,7 +25,7 @@ export function RaceList() {
         if (!cancelled) setRaces(response);
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof ApiError ? err.userMessage : "Could not load races.");
+        if (!cancelled) setError(err instanceof ApiError ? getErrorDisplay(err).message : "Could not load races.");
       });
 
     return () => {

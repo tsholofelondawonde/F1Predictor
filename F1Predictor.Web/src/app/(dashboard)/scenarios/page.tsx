@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
 import { ScenariosView } from "@/features/championship/components/ScenariosView";
+
+export const metadata: Metadata = {
+  title: "Title Scenarios",
+  description: "What each championship contender needs to happen to win the title, with simulated title chances.",
+};
 
 export default async function ScenariosPage({ searchParams }: PageProps<"/scenarios">) {
   const params = await searchParams;

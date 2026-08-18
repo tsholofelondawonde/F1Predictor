@@ -12,12 +12,29 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+const description =
+  "GridMind trains podium and points-finish predictors, and simulates F1 championships, on live OpenF1 data.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: {
     default: "GridMind",
     template: "%s · GridMind",
   },
-  description: "GridMind trains podium and points-finish predictors, and simulates F1 championships, on live OpenF1 data.",
+  description,
+  openGraph: {
+    title: "GridMind",
+    description,
+    url: siteUrl,
+    siteName: "GridMind",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "GridMind",
+    description,
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

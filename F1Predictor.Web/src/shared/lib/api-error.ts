@@ -28,6 +28,10 @@ export class ApiError extends Error {
       );
     }
 
-    return new ApiError(error.response?.status ?? 0, "Network", error.message);
+    if (error.code === "ECONNABORTED") {
+      return new ApiError(0, "Timeout", "The request took too long to respond.");
+    }
+
+    return new ApiError(0, "Network", "Could not reach the server. Check your connection.");
   }
 }

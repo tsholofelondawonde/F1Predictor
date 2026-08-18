@@ -8,6 +8,7 @@ import { LiveFooter } from "@/shared/components/LiveFooter";
 import { Card } from "@/shared/components/Card";
 import { ErrorBanner } from "@/shared/components/ErrorBanner";
 import { TableSkeleton } from "@/shared/components/Skeleton";
+import { getErrorDisplay } from "@/shared/lib/error-display";
 import { useLiveData } from "@/shared/lib/use-live-data";
 
 interface ChampionshipViewProps {
@@ -50,7 +51,8 @@ export function ChampionshipView({ year }: ChampionshipViewProps) {
   }
 
   if (error) {
-    return <ErrorBanner title="Something went wrong" message={error.userMessage} />;
+    const { title, message } = getErrorDisplay(error);
+    return <ErrorBanner title={title} message={message} />;
   }
 
   if (!data) {

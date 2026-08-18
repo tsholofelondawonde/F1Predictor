@@ -6,6 +6,7 @@ import { PreviewTable } from "@/features/predictions/components/PreviewTable";
 import { Card } from "@/shared/components/Card";
 import { ErrorBanner } from "@/shared/components/ErrorBanner";
 import { LiveFooter } from "@/shared/components/LiveFooter";
+import { TableSkeleton } from "@/shared/components/Skeleton";
 import { useLiveData } from "@/shared/lib/use-live-data";
 
 interface NextRaceViewProps {
@@ -31,7 +32,11 @@ export function NextRaceView({ year }: NextRaceViewProps) {
   const { data, error, loading, refreshing, lastUpdated, refresh } = useLiveData(fetcher, [year]);
 
   if (loading) {
-    return <p className="text-sm text-(--color-muted)">Loading race preview…</p>;
+    return (
+      <Card>
+        <TableSkeleton rows={8} />
+      </Card>
+    );
   }
 
   if (error?.code === "Prediction.ModelsNotTrained") {
@@ -81,7 +86,7 @@ export function NextRaceView({ year }: NextRaceViewProps) {
         </div>
 
         <span
-          className={`rounded-full px-3 py-1 text-xs font-medium ${
+          className={`rounded-(--radius) px-3 py-1 font-mono text-xs font-medium uppercase tracking-wider ${
             data.gridConfirmed
               ? "bg-(--color-points)/15 text-(--color-points)"
               : "bg-(--color-podium)/15 text-(--color-podium)"
@@ -92,7 +97,7 @@ export function NextRaceView({ year }: NextRaceViewProps) {
       </div>
 
       {!data.gridConfirmed && (
-        <p className="rounded-md border border-(--color-border) bg-(--color-surface) p-3 text-sm text-(--color-muted)">
+        <p className="rounded-(--radius) border border-(--color-border) bg-(--color-surface) p-3 text-sm text-(--color-muted)">
           Qualifying has not run yet, so the starting order below is projected from each driver&apos;s
           recent form rather than an actual grid. The models take grid position and gap to pole as
           their strongest inputs, so treat these probabilities as provisional — they will firm up on

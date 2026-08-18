@@ -17,15 +17,21 @@ interface LiveFooterProps {
  */
 export function LiveFooter({ lastUpdated, refreshing, onRefresh }: LiveFooterProps) {
   return (
-    <div className="flex items-center justify-between gap-3 text-xs text-(--color-muted)">
-      <span aria-live="polite">
+    <div className="flex items-center justify-between gap-3 border-t border-(--color-border) pt-3 font-mono text-xs uppercase tracking-wider text-(--color-muted)">
+      <span aria-live="polite" className="flex items-center gap-2">
+        <span
+          aria-hidden="true"
+          className={`h-1.5 w-1.5 rounded-(--radius-pill) bg-(--color-terminal-green) ${
+            refreshing ? "animate-pulse" : ""
+          }`}
+        />
         {refreshing
-          ? "Refreshing…"
+          ? "Syncing…"
           : lastUpdated
-            ? `Updated ${lastUpdated.toLocaleTimeString()} · refreshes every minute`
+            ? `Last sync ${lastUpdated.toLocaleTimeString()} · refreshes every minute`
             : "Not loaded yet"}
       </span>
-      <Button variant="secondary" onClick={onRefresh} disabled={refreshing} className="px-3 py-1 text-xs">
+      <Button variant="secondary" onClick={onRefresh} disabled={refreshing} className="px-3 py-1 text-xs uppercase tracking-wider">
         Refresh now
       </Button>
     </div>

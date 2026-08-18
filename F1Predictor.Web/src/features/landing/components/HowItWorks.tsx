@@ -1,4 +1,5 @@
 import { DatabaseIcon, GaugeIcon, CpuIcon, TargetIcon } from "@/features/landing/components/icons";
+import { RevealListItemOnScroll } from "@/shared/components/RevealOnScroll";
 
 const STEPS = [
   {
@@ -33,7 +34,7 @@ export function HowItWorks() {
           const Icon = step.icon;
 
           return (
-            <li key={step.title} className="flex flex-col gap-3">
+            <RevealListItemOnScroll key={step.title} delay={index * 0.08} className="flex flex-col gap-3">
               <div className="flex items-center gap-3">
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-(--color-accent) font-mono text-xs font-semibold text-(--color-on-accent)">
                   {index + 1}
@@ -42,7 +43,7 @@ export function HowItWorks() {
               </div>
               <h3 className="text-base font-semibold">{step.title}</h3>
               <p className="text-sm text-(--color-muted)">{step.body}</p>
-            </li>
+            </RevealListItemOnScroll>
           );
         })}
       </ol>

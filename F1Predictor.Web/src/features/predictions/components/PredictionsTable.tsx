@@ -15,19 +15,22 @@ export function PredictionsTable({ drivers }: PredictionsTableProps) {
       <table className="w-full min-w-[640px] text-left text-sm">
         <thead>
           <tr className="border-b border-(--color-border) text-(--color-muted)">
-            <th className="py-2 pr-3 font-medium">Driver</th>
-            <th className="py-2 pr-3 font-medium">Team</th>
-            <th className="py-2 pr-3 font-medium">Grid</th>
-            <th className="py-2 pr-3 font-medium">Finish</th>
-            <th className="py-2 pr-3 font-medium">Podium %</th>
-            <th className="py-2 pr-3 font-medium">Points %</th>
-            <th className="py-2 pr-3 font-medium">Actual podium</th>
-            <th className="py-2 font-medium">Actual points</th>
+            <th className="py-2 pr-3 font-mono text-xs font-medium uppercase tracking-wider">Driver</th>
+            <th className="py-2 pr-3 font-mono text-xs font-medium uppercase tracking-wider">Team</th>
+            <th className="py-2 pr-3 font-mono text-xs font-medium uppercase tracking-wider">Grid</th>
+            <th className="py-2 pr-3 font-mono text-xs font-medium uppercase tracking-wider">Finish</th>
+            <th className="py-2 pr-3 font-mono text-xs font-medium uppercase tracking-wider">Podium %</th>
+            <th className="py-2 pr-3 font-mono text-xs font-medium uppercase tracking-wider">Points %</th>
+            <th className="py-2 pr-3 font-mono text-xs font-medium uppercase tracking-wider">Actual podium</th>
+            <th className="py-2 font-mono text-xs font-medium uppercase tracking-wider">Actual points</th>
           </tr>
         </thead>
         <tbody>
           {drivers.map((driver) => (
-            <tr key={driver.driverNumber} className="border-b border-(--color-border) last:border-0">
+            <tr
+              key={driver.driverNumber}
+              className="border-b border-(--color-border) transition-colors last:border-0 hover:bg-(--color-surface-hover)"
+            >
               <td className="py-2 pr-3">
                 <span className="flex items-center gap-2">
                   <TeamColour colour={driver.teamColour} title={driver.teamName} />
@@ -36,12 +39,12 @@ export function PredictionsTable({ drivers }: PredictionsTableProps) {
                 </span>
               </td>
               <td className="py-2 pr-3 text-(--color-muted)">{driver.teamName}</td>
-              <td className="py-2 pr-3">{driver.gridPosition}</td>
-              <td className="py-2 pr-3">{driver.finishPosition}</td>
-              <td className="py-2 pr-3 font-mono text-(--color-podium)">{formatPercent(driver.podiumProbability)}</td>
-              <td className="py-2 pr-3 font-mono text-(--color-points)">{formatPercent(driver.pointsProbability)}</td>
-              <td className="py-2 pr-3">{driver.actualPodium ? "✓" : "–"}</td>
-              <td className="py-2">{driver.actualPointsFinish ? "✓" : "–"}</td>
+              <td className="py-2 pr-3 font-mono tabular-nums">{driver.gridPosition}</td>
+              <td className="py-2 pr-3 font-mono tabular-nums">{driver.finishPosition}</td>
+              <td className="py-2 pr-3 font-mono tabular-nums text-(--color-podium)">{formatPercent(driver.podiumProbability)}</td>
+              <td className="py-2 pr-3 font-mono tabular-nums text-(--color-points)">{formatPercent(driver.pointsProbability)}</td>
+              <td className="py-2 pr-3 font-mono">{driver.actualPodium ? "✓" : "—"}</td>
+              <td className="py-2 font-mono">{driver.actualPointsFinish ? "✓" : "—"}</td>
             </tr>
           ))}
         </tbody>

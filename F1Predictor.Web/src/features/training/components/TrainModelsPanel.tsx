@@ -50,7 +50,7 @@ export function TrainModelsPanel() {
             <ModelMetricCard label="Podium" result={result.podium} />
             <ModelMetricCard label="Points finish" result={result.pointsFinish} />
           </div>
-          <p className="rounded-md bg-(--color-surface-hover) p-3 text-xs text-(--color-muted)">
+          <p className="rounded-(--radius) bg-(--color-surface-hover) p-3 text-xs text-(--color-muted)">
             {result.metricGuidance}
           </p>
         </div>

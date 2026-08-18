@@ -1,4 +1,5 @@
 import { Card } from "@/shared/components/Card";
+import { RevealOnScroll } from "@/shared/components/RevealOnScroll";
 
 const PROOF_POINTS = [
   {
@@ -25,10 +26,12 @@ export function ProofStrip() {
       <div className="mx-auto max-w-6xl px-6 py-16">
         <h2 className="font-display text-3xl tracking-wide">Honest numbers, not vanity metrics</h2>
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {PROOF_POINTS.map((point) => (
-            <Card key={point.title} title={point.title}>
-              <p className="text-sm text-(--color-muted)">{point.body}</p>
-            </Card>
+          {PROOF_POINTS.map((point, index) => (
+            <RevealOnScroll key={point.title} delay={index * 0.08}>
+              <Card title={point.title}>
+                <p className="text-sm text-(--color-muted)">{point.body}</p>
+              </Card>
+            </RevealOnScroll>
           ))}
         </div>
       </div>

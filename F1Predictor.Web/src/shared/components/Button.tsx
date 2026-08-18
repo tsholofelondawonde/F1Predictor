@@ -12,10 +12,10 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
  */
 export function buttonClasses(variant: ButtonVariant = "primary", className?: string): string {
   const base =
-    "inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent)";
+    "inline-flex items-center justify-center rounded-(--radius) px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent) active:scale-[0.98]";
   const variantClass =
     variant === "primary"
-      ? "bg-(--color-accent) text-white hover:bg-(--color-accent-hover)"
+      ? "bg-(--color-accent) text-(--color-on-accent) hover:bg-(--color-accent-hover)"
       : "border border-(--color-border) text-(--color-foreground) hover:bg-(--color-surface-hover)";
 
   return `${base} ${variantClass} ${className ?? ""}`;

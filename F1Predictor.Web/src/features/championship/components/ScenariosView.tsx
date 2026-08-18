@@ -7,6 +7,7 @@ import { Card } from "@/shared/components/Card";
 import { ErrorBanner } from "@/shared/components/ErrorBanner";
 import { LiveFooter } from "@/shared/components/LiveFooter";
 import { formatProbability, ProbabilityBar } from "@/shared/components/ProbabilityBar";
+import { CardSkeleton } from "@/shared/components/Skeleton";
 import { TeamColour, teamColourCss } from "@/shared/components/TeamColour";
 import { useLiveData } from "@/shared/lib/use-live-data";
 
@@ -33,7 +34,7 @@ export function ScenariosView({ year }: ScenariosViewProps) {
   const { data, error, loading, refreshing, lastUpdated, refresh } = useLiveData(fetcher, [year]);
 
   if (loading) {
-    return <p className="text-sm text-(--color-muted)">Working out the permutations…</p>;
+    return <CardSkeleton count={3} />;
   }
 
   if (error?.code === "Championship.NoResults") {
@@ -92,7 +93,7 @@ export function ScenariosView({ year }: ScenariosViewProps) {
                   </div>
                 </div>
 
-                <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${TONE_CLASS[chip.tone]}`}>
+                <span className={`rounded-(--radius) px-2.5 py-1 font-mono text-xs font-medium uppercase tracking-wider ${TONE_CLASS[chip.tone]}`}>
                   {chip.label}
                 </span>
               </div>
@@ -125,6 +126,7 @@ export function ScenariosView({ year }: ScenariosViewProps) {
                     value={scenario.titleProbability}
                     colour={teamColourCss(scenario.teamColour)}
                     muted={!scenario.isMathematicallyAlive}
+                    segmented
                   />
                 </div>
                 <span className="sr-only">{formatProbability(scenario.titleProbability)}</span>

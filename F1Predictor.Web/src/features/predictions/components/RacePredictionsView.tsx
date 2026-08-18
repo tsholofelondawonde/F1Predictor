@@ -6,6 +6,7 @@ import type { RacePredictionsResponse } from "@/features/predictions/predictions
 import { PredictionsTable } from "@/features/predictions/components/PredictionsTable";
 import { Card } from "@/shared/components/Card";
 import { ErrorBanner } from "@/shared/components/ErrorBanner";
+import { TableSkeleton } from "@/shared/components/Skeleton";
 import { ApiError } from "@/shared/lib/api-error";
 
 interface RacePredictionsViewProps {
@@ -40,7 +41,11 @@ export function RacePredictionsView({ sessionKey }: RacePredictionsViewProps) {
   }, [sessionKey]);
 
   if (loading) {
-    return <p className="text-sm text-(--color-muted)">Loading predictions…</p>;
+    return (
+      <Card>
+        <TableSkeleton rows={10} />
+      </Card>
+    );
   }
 
   if (error?.code === "Prediction.ModelsNotTrained") {

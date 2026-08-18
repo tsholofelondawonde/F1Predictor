@@ -6,6 +6,7 @@ import type { HoldoutPredictionsResponse } from "@/features/predictions/predicti
 import { PredictionsTable } from "@/features/predictions/components/PredictionsTable";
 import { Card } from "@/shared/components/Card";
 import { ErrorBanner } from "@/shared/components/ErrorBanner";
+import { TableSkeleton } from "@/shared/components/Skeleton";
 import { ApiError } from "@/shared/lib/api-error";
 
 interface HoldoutViewProps {
@@ -40,7 +41,11 @@ export function HoldoutView({ year }: HoldoutViewProps) {
   }, [year]);
 
   if (loading) {
-    return <p className="text-sm text-(--color-muted)">Loading holdout results…</p>;
+    return (
+      <Card>
+        <TableSkeleton rows={10} />
+      </Card>
+    );
   }
 
   if (error?.code === "Prediction.ModelsNotTrained") {

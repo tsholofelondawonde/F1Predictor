@@ -19,7 +19,7 @@ export function TabNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex gap-1 text-sm" aria-label="Sections">
+    <nav className="flex font-mono text-xs uppercase tracking-wider" aria-label="Sections">
       {TABS.map((tab) => {
         const active = isActive(pathname, tab.href);
 
@@ -28,10 +28,10 @@ export function TabNav() {
             key={tab.href}
             href={tab.href}
             aria-current={active ? "page" : undefined}
-            className={`rounded-md px-3 py-1.5 transition-colors ${
+            className={`border-b-2 px-3 py-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-(--color-accent) ${
               active
-                ? "bg-(--color-surface) font-medium text-(--color-accent)"
-                : "text-(--color-muted) hover:bg-(--color-surface-hover) hover:text-(--color-foreground)"
+                ? "border-(--color-accent) text-(--color-accent)"
+                : "border-transparent text-(--color-muted) hover:border-(--color-border) hover:text-(--color-foreground)"
             }`}
           >
             {tab.label}

@@ -7,7 +7,14 @@ namespace F1Predictor.Application.Features.Predictions.PreviewNextRace;
 /// <param name="CircuitShortName">Short circuit name.</param>
 /// <param name="CountryName">Host country.</param>
 /// <param name="DateStart">Scheduled start, in UTC.</param>
-/// <param name="HasSprint">Whether the weekend also runs a sprint.</param>
+/// <param name="SprintSessionKey">
+/// OpenF1 session key of the weekend's sprint, or null if the weekend has none.
+/// </param>
+/// <param name="SprintDateStart">
+/// Scheduled start of the weekend's sprint, in UTC, or null if the weekend has none. Not
+/// gated on whether the sprint has already run — a sprint can be classified while its GP
+/// isn't, since it runs a day earlier.
+/// </param>
 /// <param name="GridConfirmed">
 /// True once qualifying has been run and the real starting order is known. While false, every
 /// grid position below is projected from recent form and the probabilities should be read as
@@ -22,7 +29,8 @@ public sealed record NextRacePreviewResponse(
     string CircuitShortName,
     string CountryName,
     DateTimeOffset DateStart,
-    bool HasSprint,
+    int? SprintSessionKey,
+    DateTimeOffset? SprintDateStart,
     bool GridConfirmed,
     IReadOnlyList<PreviewDriverResponse> Drivers);
 

@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { getNextRacePreview } from "@/features/predictions/predictions-service";
 import { PreviewTable } from "@/features/predictions/components/PreviewTable";
 import { Card } from "@/shared/components/Card";
+import { Countdown } from "@/shared/components/Countdown";
 import { ErrorBanner } from "@/shared/components/ErrorBanner";
 import { LiveFooter } from "@/shared/components/LiveFooter";
 import { TableSkeleton } from "@/shared/components/Skeleton";
@@ -12,20 +13,6 @@ import { useLiveData } from "@/shared/lib/use-live-data";
 
 interface NextRaceViewProps {
   year: number;
-}
-
-function countdown(to: Date): string {
-  const ms = to.getTime() - Date.now();
-
-  if (ms <= 0) return "under way";
-
-  const hours = Math.floor(ms / 3_600_000);
-  const days = Math.floor(hours / 24);
-
-  if (days >= 1) return `in ${days} day${days === 1 ? "" : "s"}`;
-  if (hours >= 1) return `in ${hours} hour${hours === 1 ? "" : "s"}`;
-
-  return `in ${Math.max(1, Math.floor(ms / 60_000))} minutes`;
 }
 
 export function NextRaceView({ year }: NextRaceViewProps) {
@@ -82,8 +69,13 @@ export function NextRaceView({ year }: NextRaceViewProps) {
           <h1 className="text-xl font-semibold">{data.meetingName}</h1>
           <p className="text-sm text-(--color-muted)">
             {data.circuitShortName}, {data.countryName} · {start.toLocaleString()} ·{" "}
-            {countdown(start)}
-            {data.hasSprint && " · sprint weekend"}
+            <Countdown to={start} />
+            {data.sprintDateStart && (
+              <>
+                {" "}
+                · Sprint <Countdown to={new Date(data.sprintDateStart)} />
+              </>
+            )}
           </p>
         </div>
 

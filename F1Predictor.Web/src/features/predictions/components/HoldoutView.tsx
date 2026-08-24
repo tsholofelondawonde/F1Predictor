@@ -73,8 +73,11 @@ export function HoldoutView({ year }: HoldoutViewProps) {
   }
 
   return (
-    <Card title={`${data.meetingName} — ${data.circuitShortName} (${data.year} holdout)`}>
-      <PredictionsTable drivers={data.drivers} />
-    </Card>
+    <div className="space-y-4">
+      <h1 className="text-xl font-semibold">Holdout Predictions</h1>
+      <Card title={`${data.meetingName} — ${data.circuitShortName} (${data.year} holdout)`}>
+        <PredictionsTable drivers={data.drivers} />
+      </Card>
+    </div>
   );
 }

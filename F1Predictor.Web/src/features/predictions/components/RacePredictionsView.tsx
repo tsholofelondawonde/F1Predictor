@@ -73,8 +73,11 @@ export function RacePredictionsView({ sessionKey }: RacePredictionsViewProps) {
   }
 
   return (
-    <Card title={data.meetingName}>
-      <PredictionsTable drivers={data.drivers} />
-    </Card>
+    <div className="space-y-4">
+      <h1 className="text-xl font-semibold">Race Predictions</h1>
+      <Card title={data.meetingName}>
+        <PredictionsTable drivers={data.drivers} />
+      </Card>
+    </div>
   );
 }

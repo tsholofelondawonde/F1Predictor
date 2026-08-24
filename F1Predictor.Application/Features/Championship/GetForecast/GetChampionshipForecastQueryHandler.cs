@@ -1,14 +1,14 @@
 using F1Predictor.Application.Abstractions.Data;
 using F1Predictor.Application.Abstractions.Messaging;
 using F1Predictor.Domain.Championship;
-using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Caching.Hybrid;
 using SharedKernel;
 
 namespace F1Predictor.Application.Features.Championship.GetForecast;
 
 internal sealed class GetChampionshipForecastQueryHandler(
     IApplicationDbContext context,
-    IMemoryCache cache)
+    HybridCache cache)
     : IQueryHandler<GetChampionshipForecastQuery, ChampionshipForecastResponse>
 {
     private const string MethodGuidance =
@@ -37,7 +37,8 @@ internal sealed class GetChampionshipForecastQueryHandler(
                 ChampionshipErrors.SeasonComplete(query.Year));
         }
 
-        var forecast = CachedForecast.For(cache, season, ChampionshipSimulator.DefaultSimulations);
+        var forecast = await CachedForecast.For(
+            cache, season, ChampionshipSimulator.DefaultSimulations, cancellationToken);
 
         var driverOdds = forecast.Drivers.ToDictionary(d => d.DriverNumber, d => d.Odds);
         var teamOdds = forecast.Constructors.ToDictionary(c => c.TeamName, c => c.Odds, StringComparer.Ordinal);

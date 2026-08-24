@@ -14,6 +14,7 @@ export const metadata: Metadata = {
   title: { absolute: "GridMind — F1 Race & Championship Predictions" },
   description:
     "Podium probabilities, points-finish odds, and Monte Carlo championship forecasts built on live OpenF1 data — with honest, imbalanced-class-aware model metrics.",
+  alternates: { canonical: "/" },
 };
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {

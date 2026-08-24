@@ -364,6 +364,13 @@ dotnet ef migrations add <Name> --project F1Predictor.Infrastructure \
 
 Then, from `/scalar`: ingest a season → rebuild features → train → read the holdout table.
 
+`AppHost.cs` only ever runs the frontend locally, where `NEXT_PUBLIC_SITE_URL`'s
+`http://localhost:3000` fallback (`F1Predictor.Web/src/app/layout.tsx`) is already correct.
+Whatever hosts `F1Predictor.Web` in production must set `NEXT_PUBLIC_SITE_URL` itself to the
+real public origin — see the comment in `F1Predictor.Web/.env.example`. It feeds
+`metadataBase`, the OpenGraph image, `robots.ts`, and `sitemap.ts`, so a stale value quietly
+breaks share previews and the sitemap's URLs, not just a cosmetic default.
+
 ## 15. Testing
 
 No automated test project exists yet. `F1Predictor.slnx` has an empty `/tests/` solution

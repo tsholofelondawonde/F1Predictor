@@ -6,9 +6,24 @@ import { FinalCTA } from "@/features/landing/components/FinalCTA";
 import { FlagIcon, TrendingUpIcon, DiceIcon } from "@/features/landing/components/icons";
 import { RevealOnScroll } from "@/shared/components/RevealOnScroll";
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "GridMind",
+  url: siteUrl,
+  description:
+    "GridMind trains podium and points-finish predictors, and simulates F1 championships, on live OpenF1 data.",
+};
+
 export default function LandingPage() {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
       <Hero />
       <ProofStrip />
 

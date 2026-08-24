@@ -1,11 +1,59 @@
 {
   "version": 1,
   "skills": {
+    "accessibility": {
+      "source": "tsholofelondawonde/engineering-skills",
+      "sourceType": "github",
+      "skillPath": "skills/quality/accessibility/SKILL.md",
+      "computedHash": "6ef1963cc60ce74a13571c1bfb1723b833424ccbe7dc5cb8df301e46e4da8f84"
+    },
+    "authentication": {
+      "source": "tsholofelondawonde/engineering-skills",
+      "sourceType": "github",
+      "skillPath": "skills/security/authentication/SKILL.md",
+      "computedHash": "67071d6e8d7840048e1dbfed4438e58db0d13e19f718922a80b1aedbfe706ad2"
+    },
+    "authorization": {
+      "source": "tsholofelondawonde/engineering-skills",
+      "sourceType": "github",
+      "skillPath": "skills/security/authorization/SKILL.md",
+      "computedHash": "d0c5795f6a81f118e473a42f1af62ddd2af40e0ae7e1a505f121c34b66e19986"
+    },
     "brandkit": {
       "source": "Leonxlnx/taste-skill",
       "sourceType": "github",
       "skillPath": "skills/brandkit/SKILL.md",
       "computedHash": "735007879f5110aeae1e981a53fe74a12afde70347f9773dacd50e4697a091bf"
+    },
+    "caching": {
+      "source": "tsholofelondawonde/engineering-skills",
+      "sourceType": "github",
+      "skillPath": "skills/performance/caching/SKILL.md",
+      "computedHash": "8754f7b03adc33d8f20bb15a015a4e5b1038a9d57d84bdcd2c8e3cc892331054"
+    },
+    "cookie-consent": {
+      "source": "tsholofelondawonde/engineering-skills",
+      "sourceType": "github",
+      "skillPath": "skills/compliance/cookie-consent/SKILL.md",
+      "computedHash": "585dc506b568f20fdec411cb0c2657da306afaa028e54f830eb682bcb331445a"
+    },
+    "cors": {
+      "source": "tsholofelondawonde/engineering-skills",
+      "sourceType": "github",
+      "skillPath": "skills/security/cors/SKILL.md",
+      "computedHash": "621e4b73283d54533e99cb875ca09fff6f9c6197f4c84eb3691aa7673dfbd4ac"
+    },
+    "csrf": {
+      "source": "tsholofelondawonde/engineering-skills",
+      "sourceType": "github",
+      "skillPath": "skills/security/csrf/SKILL.md",
+      "computedHash": "5d271997f2580e9fcfa42986b7f47347778bcbcf07ea6e2bddd8c5ee7402f5ec"
+    },
+    "custom-404": {
+      "source": "tsholofelondawonde/engineering-skills",
+      "sourceType": "github",
+      "skillPath": "skills/web/custom-404/SKILL.md",
+      "computedHash": "e7fe524e9708343ddcee6916268e4dcfc6facef471a34c510eb8f282361f9a45"
     },
     "design-taste-frontend": {
       "source": "Leonxlnx/taste-skill",
@@ -18,6 +66,18 @@
       "sourceType": "github",
       "skillPath": "skills/taste-skill-v1/SKILL.md",
       "computedHash": "0a226c13d69639553cf8a7c40aa5527b026820f8ddaf7a6b263988e32ab44a27"
+    },
+    "error-states": {
+      "source": "tsholofelondawonde/engineering-skills",
+      "sourceType": "github",
+      "skillPath": "skills/web/error-states/SKILL.md",
+      "computedHash": "445e4600f47863262166f860ec9e3410c90462066238d73cc2d6e404b09b1611"
+    },
+    "form-validation": {
+      "source": "tsholofelondawonde/engineering-skills",
+      "sourceType": "github",
+      "skillPath": "skills/web/form-validation/SKILL.md",
+      "computedHash": "2969f09d6f0d263bb4cc37a4b6eff8331703a1979ddefb32c4e23219e78d62e5"
     },
     "full-output-enforcement": {
       "source": "Leonxlnx/taste-skill",
@@ -36,6 +96,12 @@
       "sourceType": "github",
       "skillPath": "skills/soft-skill/SKILL.md",
       "computedHash": "f730e4132775f13eea19e3dc39afc6bb453cfc0498872b127ad8f0d47cfd802d"
+    },
+    "image-optimization": {
+      "source": "tsholofelondawonde/engineering-skills",
+      "sourceType": "github",
+      "skillPath": "skills/web/image-optimization/SKILL.md",
+      "computedHash": "9584d6b7ac2da9fda7929d77c9d393538b78466d74e84c6ad323f7134c7e9790"
     },
     "image-to-code": {
       "source": "Leonxlnx/taste-skill",
@@ -61,11 +127,41 @@
       "skillPath": "skills/brutalist-skill/SKILL.md",
       "computedHash": "e66e5a2a8b73cef79ab6546459c665e8b983645689c5f3772f7eed8b9f1e8e0e"
     },
+    "loading-states": {
+      "source": "tsholofelondawonde/engineering-skills",
+      "sourceType": "github",
+      "skillPath": "skills/web/loading-states/SKILL.md",
+      "computedHash": "1cdf3a4f18f25f1e07b30ace491d651092ed6145aa6d179975f30e399942e3a7"
+    },
     "minimalist-ui": {
       "source": "Leonxlnx/taste-skill",
       "sourceType": "github",
       "skillPath": "skills/minimalist-skill/SKILL.md",
       "computedHash": "7e88897e0371184e97a82b8d9ef080323c13f21eb067b58ef71eb05173a08ac2"
+    },
+    "open-graph": {
+      "source": "tsholofelondawonde/engineering-skills",
+      "sourceType": "github",
+      "skillPath": "skills/web/open-graph/SKILL.md",
+      "computedHash": "c884604c274304320060624dbcb0453b5b0cbc6988507be56e5e1b55409cf9e0"
+    },
+    "privacy-policy": {
+      "source": "tsholofelondawonde/engineering-skills",
+      "sourceType": "github",
+      "skillPath": "skills/compliance/privacy-policy/SKILL.md",
+      "computedHash": "d287c8e2010a732df54716131ec02a9965ac6ce5ad9085fefbf52f8d11348944"
+    },
+    "rate-limiting": {
+      "source": "tsholofelondawonde/engineering-skills",
+      "sourceType": "github",
+      "skillPath": "skills/security/rate-limiting/SKILL.md",
+      "computedHash": "f47224a69df74ed92492b543373ede7968f282281c9709748a60572b03db6c05"
+    },
+    "readme-generator": {
+      "source": "tsholofelondawonde/engineering-skills",
+      "sourceType": "github",
+      "skillPath": "skills/documentation/readme-generator/SKILL.md",
+      "computedHash": "1b148468ca3cae97ce5a6629b96faee50c70d1a713520e8f4691dfce2ea2993a"
     },
     "redesign-existing-projects": {
       "source": "Leonxlnx/taste-skill",
@@ -73,11 +169,53 @@
       "skillPath": "skills/redesign-skill/SKILL.md",
       "computedHash": "47eced3e960a2c961d3cbee11fa1216264f589344b586a5cbd03967cd6b9c54b"
     },
+    "responsive-design": {
+      "source": "tsholofelondawonde/engineering-skills",
+      "sourceType": "github",
+      "skillPath": "skills/web/responsive-design/SKILL.md",
+      "computedHash": "a1e34aadde5a1cc58d7dec47e2356355fc3d897aa8ce62c4f3feb283857ff63e"
+    },
+    "secrets-management": {
+      "source": "tsholofelondawonde/engineering-skills",
+      "sourceType": "github",
+      "skillPath": "skills/security/secrets-management/SKILL.md",
+      "computedHash": "d77dda4f5e2677c4045c1c138b0bf2572d66e3b7207c1d14f692857bdd667c83"
+    },
+    "security-headers": {
+      "source": "tsholofelondawonde/engineering-skills",
+      "sourceType": "github",
+      "skillPath": "skills/security/security-headers/SKILL.md",
+      "computedHash": "8d38c41b1da0c041376a8c75ae610ecc8cedb6615640d858c83a02944b01a64a"
+    },
+    "seo-metadata": {
+      "source": "tsholofelondawonde/engineering-skills",
+      "sourceType": "github",
+      "skillPath": "skills/web/seo-metadata/SKILL.md",
+      "computedHash": "566f9957d24858355c4372d9cfe11abfb08154649c28603d3ad543101788b0ec"
+    },
     "stitch-design-taste": {
       "source": "Leonxlnx/taste-skill",
       "sourceType": "github",
       "skillPath": "skills/stitch-skill/SKILL.md",
       "computedHash": "c96b580192b34167efa01f460bbc669ff4315cf97f3cf6ff85ded8029aa720b8"
+    },
+    "terms": {
+      "source": "tsholofelondawonde/engineering-skills",
+      "sourceType": "github",
+      "skillPath": "skills/compliance/terms/SKILL.md",
+      "computedHash": "e30f79f9572529c514df487d51bc11a237d07b92bcf4604e0e027465dc583691"
+    },
+    "testing": {
+      "source": "tsholofelondawonde/engineering-skills",
+      "sourceType": "github",
+      "skillPath": "skills/quality/testing/SKILL.md",
+      "computedHash": "ac652e1bc22243cb774775325be4f9da717adc245a709d5a8c70c410d2816749"
+    },
+    "token-security": {
+      "source": "tsholofelondawonde/engineering-skills",
+      "sourceType": "github",
+      "skillPath": "skills/security/token-security/SKILL.md",
+      "computedHash": "967770495531d83130a0b2243a170618701686cb9770cb900d27dac1d25ba040"
     }
   }
 }

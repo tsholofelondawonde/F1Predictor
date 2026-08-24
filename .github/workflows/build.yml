@@ -21,11 +21,11 @@ jobs:
           dotnet-version: '10.x'
 
       - name: Restore dependencies
-        run: dotnet restore clean-architecture.slnx
+        run: dotnet restore F1Predictor.slnx
 
       - name: Build
-        run: dotnet build clean-architecture.slnx --configuration Release --no-restore
+        run: dotnet build F1Predictor.slnx --configuration Release --no-restore
 
       # Uncomment when test projects are added under /tests/
       # - name: Test
-      #   run: dotnet test clean-architecture.slnx --configuration Release --no-build --verbosity normal
+      #   run: dotnet test F1Predictor.slnx --configuration Release --no-build --verbosity normal

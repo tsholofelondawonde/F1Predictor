@@ -1,0 +1,126 @@
+root = true
+
+[*]
+charset = utf-8
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.cs]
+# Nullable reference types — promote to error
+dotnet_diagnostic.CS8600.severity = error
+dotnet_diagnostic.CS8601.severity = error
+dotnet_diagnostic.CS8602.severity = error
+dotnet_diagnostic.CS8603.severity = error
+dotnet_diagnostic.CS8604.severity = error
+
+# Code style: no this. qualification
+dotnet_style_qualification_for_field = false:warning
+dotnet_style_qualification_for_property = false:warning
+dotnet_style_qualification_for_method = false:warning
+dotnet_style_qualification_for_event = false:warning
+
+# Interfaces must begin with I
+dotnet_naming_rule.interface_should_begin_with_i.severity = error
+dotnet_naming_rule.interface_should_begin_with_i.symbols = interface
+dotnet_naming_rule.interface_should_begin_with_i.style = begins_with_i
+dotnet_naming_symbols.interface.applicable_kinds = interface
+dotnet_naming_style.begins_with_i.required_prefix = I
+dotnet_naming_style.begins_with_i.capitalization = pascal_case
+
+# Async-suffix rule DELIBERATELY DISABLED — conflicts with CQRS `Handle` convention.
+# Every handler in this repo is named Handle; enforcing Async suffix would be a build error.
+
+# ── Justified suppressions ───────────────────────────────────────────────────
+
+# CA1707: Underscores in namespace names — project names with hyphens produce
+#          underscores in C# namespaces (e.g. clean_architecture.*). Intentional.
+dotnet_diagnostic.CA1707.severity = none
+
+# CA1812: Internal class never instantiated — DI container instantiates via reflection.
+dotnet_diagnostic.CA1812.severity = none
+
+# CA2007 / MA0004: ConfigureAwait — not needed in ASP.NET Core (no SynchronizationContext).
+dotnet_diagnostic.CA2007.severity = none
+dotnet_diagnostic.MA0004.severity = none
+
+# CA1062: Validate parameter is non-null — nullable reference types enforce this at compile time.
+dotnet_diagnostic.CA1062.severity = none
+
+# CA1040: Avoid empty interfaces — IDomainEvent is an intentional marker interface.
+dotnet_diagnostic.CA1040.severity = none
+
+# CA1724: Type name conflicts with namespace — DependencyInjection is a standard extension class pattern.
+dotnet_diagnostic.CA1724.severity = none
+
+# CA1515: Types can be internal — this is an application assembly, not a reusable library.
+dotnet_diagnostic.CA1515.severity = none
+
+# CA1303: Embed literal strings — this app is not localised; resource tables add no value here.
+dotnet_diagnostic.CA1303.severity = none
+
+# CA1031: Catch more specific exception — startup/bootstrap catch blocks intentionally broad.
+dotnet_diagnostic.CA1031.severity = none
+
+# CA1711: Type name ends in EventHandler — IDomainEventHandler is a deliberate naming convention.
+dotnet_diagnostic.CA1711.severity = none
+
+# CA2225: Provide alternate for operator — Result<T> implicit operators are a well-known pattern.
+dotnet_diagnostic.CA2225.severity = none
+
+# CA1861: Prefer static readonly over constant array — minor perf advisory; suppressed for now.
+dotnet_diagnostic.CA1861.severity = none
+
+# CA1002 / MA0016: List<T> in public API — used internally; not a true public API surface.
+dotnet_diagnostic.CA1002.severity = none
+dotnet_diagnostic.MA0016.severity = none
+
+# CA1305: Provide IFormatProvider — Serilog's Console sink does not accept IFormatProvider.
+dotnet_diagnostic.CA1305.severity = none
+
+# MA0002: Use IEqualityComparer overload — string keys in Dictionary; ordinal comparison is default.
+dotnet_diagnostic.MA0002.severity = none
+
+# MA0048: File name must match type name — related types (enum + resolver) co-located intentionally.
+dotnet_diagnostic.MA0048.severity = none
+
+# CA1848: Use LoggerMessage delegates — all handlers use structured logging correctly; delegates
+#          add boilerplate with no meaningful benefit for this scope of logging volume.
+dotnet_diagnostic.CA1848.severity = none
+
+# S1135: Track uses of "TODO" — deliberate marker comments are managed in issue tracker, not build.
+dotnet_diagnostic.S1135.severity = none
+
+# CA1030: Consider making 'Raise' an event — Raise() is a domain-event publication method, not a .NET event.
+dotnet_diagnostic.CA1030.severity = none
+
+# CA1000: Do not declare static members on generic types — Result<T> factory methods are intentional.
+dotnet_diagnostic.CA1000.severity = none
+
+# S2326: Type parameter not used in interface — ICommand<TResponse> / IQuery<TResponse> phantom types
+#         are used as constraints by handler interfaces; Sonar does not understand this CQRS pattern.
+dotnet_diagnostic.S2326.severity = none
+
+# CA1716: Namespace conflicts with reserved keyword — Notes.Get namespace predates this rule;
+#          renaming the folder hierarchy is a larger refactor tracked separately.
+dotnet_diagnostic.CA1716.severity = none
+
+# CA1873: Logger argument evaluation may be expensive — LoggingDecorator operates at controlled
+#          log levels; conditional IsEnabled checks would add noise with no measurable benefit here.
+dotnet_diagnostic.CA1873.severity = none
+
+# S4035: Seal class or implement IEqualityComparer<T> — ValueObject is an abstract DDD base class
+#         and must remain unsealed so domain value objects can extend it.
+dotnet_diagnostic.S4035.severity = none
+
+# CA1819: Properties should not return arrays — ValidationError.Errors is an immutable snapshot
+#          set once at construction; array is the correct type for this closed, finite collection.
+dotnet_diagnostic.CA1819.severity = none
+
+# S125: Sections of code should not be commented out — GENERATOR_ASPIRE_TOKEN markers in
+#        Program.cs and Aspire template extension stubs in ServiceDefaults are intentional.
+dotnet_diagnostic.S125.severity = none
+
+[**/Migrations/*.cs]
+generated_code = true

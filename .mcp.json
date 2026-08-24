@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "graphify": {
+      "type": "stdio",
+      "command": "C:\\Users\\polar\\.local\\bin\\graphify-mcp.exe",
+      "args": ["graphify-out/graph.json", "--transport", "stdio"]
+    }
+  }
+}

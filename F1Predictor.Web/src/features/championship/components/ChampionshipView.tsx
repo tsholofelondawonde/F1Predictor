@@ -61,7 +61,7 @@ export function ChampionshipView({ year }: ChampionshipViewProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold">{data.year} Championship</h1>
           <p className="text-sm text-(--color-muted)">

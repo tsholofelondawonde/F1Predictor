@@ -15,9 +15,13 @@ export async function generateMetadata({
 
   try {
     const data = await getRacePredictions(key);
+    const description = `Podium and points-finish probabilities for ${data.meetingName}.`;
+
     return {
       title: data.meetingName,
-      description: `Podium and points-finish probabilities for ${data.meetingName}.`,
+      description,
+      openGraph: { title: data.meetingName, description },
+      twitter: { title: data.meetingName, description },
     };
   } catch {
     return { title: "Race Predictions" };

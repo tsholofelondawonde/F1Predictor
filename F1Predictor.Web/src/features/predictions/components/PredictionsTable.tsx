@@ -13,16 +13,17 @@ export function PredictionsTable({ drivers }: PredictionsTableProps) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[640px] text-left text-sm">
+        <caption className="sr-only">Podium and points-finish predictions per driver</caption>
         <thead>
           <tr className="border-b border-(--color-border) text-(--color-muted)">
-            <th className="py-2 pr-3 font-mono text-xs font-medium uppercase tracking-wider">Driver</th>
-            <th className="py-2 pr-3 font-mono text-xs font-medium uppercase tracking-wider">Team</th>
-            <th className="py-2 pr-3 font-mono text-xs font-medium uppercase tracking-wider">Grid</th>
-            <th className="py-2 pr-3 font-mono text-xs font-medium uppercase tracking-wider">Finish</th>
-            <th className="py-2 pr-3 font-mono text-xs font-medium uppercase tracking-wider">Podium %</th>
-            <th className="py-2 pr-3 font-mono text-xs font-medium uppercase tracking-wider">Points %</th>
-            <th className="py-2 pr-3 font-mono text-xs font-medium uppercase tracking-wider">Actual podium</th>
-            <th className="py-2 font-mono text-xs font-medium uppercase tracking-wider">Actual points</th>
+            <th scope="col" className="py-2 pr-3 font-mono text-xs font-medium uppercase tracking-wider">Driver</th>
+            <th scope="col" className="py-2 pr-3 font-mono text-xs font-medium uppercase tracking-wider">Team</th>
+            <th scope="col" className="py-2 pr-3 font-mono text-xs font-medium uppercase tracking-wider">Grid</th>
+            <th scope="col" className="py-2 pr-3 font-mono text-xs font-medium uppercase tracking-wider">Finish</th>
+            <th scope="col" className="py-2 pr-3 font-mono text-xs font-medium uppercase tracking-wider">Podium %</th>
+            <th scope="col" className="py-2 pr-3 font-mono text-xs font-medium uppercase tracking-wider">Points %</th>
+            <th scope="col" className="py-2 pr-3 font-mono text-xs font-medium uppercase tracking-wider">Actual podium</th>
+            <th scope="col" className="py-2 font-mono text-xs font-medium uppercase tracking-wider">Actual points</th>
           </tr>
         </thead>
         <tbody>
@@ -43,8 +44,14 @@ export function PredictionsTable({ drivers }: PredictionsTableProps) {
               <td className="py-2 pr-3 font-mono tabular-nums">{driver.finishPosition}</td>
               <td className="py-2 pr-3 font-mono tabular-nums text-(--color-podium)">{formatPercent(driver.podiumProbability)}</td>
               <td className="py-2 pr-3 font-mono tabular-nums text-(--color-points)">{formatPercent(driver.pointsProbability)}</td>
-              <td className="py-2 pr-3 font-mono">{driver.actualPodium ? "✓" : "—"}</td>
-              <td className="py-2 font-mono">{driver.actualPointsFinish ? "✓" : "—"}</td>
+              <td className="py-2 pr-3 font-mono">
+                <span aria-hidden="true">{driver.actualPodium ? "✓" : "—"}</span>
+                <span className="sr-only">{driver.actualPodium ? "Yes" : "No"}</span>
+              </td>
+              <td className="py-2 font-mono">
+                <span aria-hidden="true">{driver.actualPointsFinish ? "✓" : "—"}</span>
+                <span className="sr-only">{driver.actualPointsFinish ? "Yes" : "No"}</span>
+              </td>
             </tr>
           ))}
         </tbody>

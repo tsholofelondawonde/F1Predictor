@@ -2,9 +2,12 @@ using F1Predictor.Application;
 using F1Predictor.Infrastructure;
 using F1Predictor.WebApi;
 using F1Predictor.WebApi.Extensions;
+using F1Predictor.WebApi.Infrastructure;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Scalar.AspNetCore;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,8 +21,35 @@ const string FrontendCorsPolicy = "Frontend";
 
 builder.Services.AddCors(options => options.AddPolicy(FrontendCorsPolicy, policy =>
     policy.WithOrigins(builder.Configuration["Frontend:BaseUrl"] ?? "http://localhost:3000")
-          .AllowAnyHeader()
-          .AllowAnyMethod()));
+          .WithMethods("GET", "POST")
+          .WithHeaders("Content-Type", "X-Api-Key")));
+
+// Only the four mutating routes that opt into these policies via .RequireRateLimiting(...)
+// are affected — every other route is unrestricted.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy(RateLimiterPolicies.Ingest, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 1,
+                Window = TimeSpan.FromMinutes(5),
+                QueueLimit = 0
+            }));
+
+    options.AddPolicy(RateLimiterPolicies.Mutating, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 3,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+});
 
 builder.Services
     .AddOpenApi()
@@ -51,16 +81,21 @@ if (app.Environment.IsDevelopment())
 // bound to under Aspire orchestration.
 if (!app.Environment.IsDevelopment())
 {
+    app.UseHsts();
     app.UseHttpsRedirection();
 }
 
 app.UseRequestContextLogging();
+
+app.UseSecurityHeaders();
 
 app.UseResponseCompression();
 
 app.UseRouting();
 
 app.UseCors(FrontendCorsPolicy);
+
+app.UseRateLimiter();
 
 if (app.Environment.IsDevelopment())
 {

@@ -5,6 +5,7 @@ import { ingestSeason } from "@/features/seasons/seasons-service";
 import { IngestOutcomeLabel } from "@/features/seasons/seasons-types";
 import { Button } from "@/shared/components/Button";
 import { Card } from "@/shared/components/Card";
+import { StatusAnnouncer } from "@/shared/components/StatusAnnouncer";
 import { useAsyncAction } from "@/shared/lib/use-async-action";
 
 export function IngestSeasonPanel() {
@@ -24,6 +25,16 @@ export function IngestSeasonPanel() {
         {isRunning ? "Ingesting… this can take several minutes" : `Ingest ${selectedYear}`}
       </Button>
 
+      <StatusAnnouncer
+        message={
+          status === "success" && result
+            ? `Ingest complete: ${result.meetingsIngested} of ${result.meetingsFound} meetings newly ingested.`
+            : status === "error" && error
+              ? `Ingest failed: ${error.message}`
+              : null
+        }
+      />
+
       {status === "error" && error && <p className="mt-3 text-sm text-(--color-error-text)">{error.message}</p>}
 
       {status === "success" && result && (
@@ -33,10 +44,11 @@ export function IngestSeasonPanel() {
           </p>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[480px] text-left text-sm">
+              <caption className="sr-only">Meetings ingested this run and their outcome</caption>
               <thead>
                 <tr className="border-b border-(--color-border) text-(--color-muted)">
-                  <th className="py-1 pr-2 font-medium">Meeting</th>
-                  <th className="py-1 font-medium">Outcome</th>
+                  <th scope="col" className="py-1 pr-2 font-medium">Meeting</th>
+                  <th scope="col" className="py-1 font-medium">Outcome</th>
                 </tr>
               </thead>
               <tbody>

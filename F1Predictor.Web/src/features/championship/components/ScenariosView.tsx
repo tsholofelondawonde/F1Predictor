@@ -85,7 +85,7 @@ export function ScenariosView({ year }: ScenariosViewProps) {
 
           return (
             <Card key={scenario.driverNumber}>
-              <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-sm text-(--color-muted)">{scenario.position}.</span>
                   <TeamColour colour={scenario.teamColour} title={scenario.teamName} />

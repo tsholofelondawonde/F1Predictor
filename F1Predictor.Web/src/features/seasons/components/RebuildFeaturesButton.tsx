@@ -3,6 +3,7 @@
 import { rebuildFeatures } from "@/features/seasons/seasons-service";
 import { Button } from "@/shared/components/Button";
 import { Card } from "@/shared/components/Card";
+import { StatusAnnouncer } from "@/shared/components/StatusAnnouncer";
 import { useAsyncAction } from "@/shared/lib/use-async-action";
 
 export function RebuildFeaturesButton() {
@@ -16,6 +17,15 @@ export function RebuildFeaturesButton() {
       <Button onClick={() => run()} disabled={status === "running"} variant="secondary">
         {status === "running" ? "Rebuilding…" : "Rebuild features"}
       </Button>
+      <StatusAnnouncer
+        message={
+          status === "success" && result
+            ? `Rebuild complete: ${result.featureRows} feature rows across ${result.racesWithFeatures} races.`
+            : status === "error" && error
+              ? `Rebuild failed: ${error.message}`
+              : null
+        }
+      />
       {status === "error" && error && <p className="mt-3 text-sm text-(--color-error-text)">{error.message}</p>}
       {status === "success" && result && (
         <p className="mt-3 text-sm text-(--color-muted)">

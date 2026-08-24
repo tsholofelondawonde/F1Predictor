@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
 import { NextRaceView } from "@/features/predictions/components/NextRaceView";
 
+const title = "Next Race";
+const description =
+  "Podium and points-finish probabilities for the upcoming Grand Prix, updated as the grid firms up.";
+
 export const metadata: Metadata = {
-  title: "Next Race",
-  description: "Podium and points-finish probabilities for the upcoming Grand Prix, updated as the grid firms up.",
+  title,
+  description,
+  openGraph: { title, description },
+  twitter: { title, description },
 };
 
 export default async function NextRacePage({ searchParams }: PageProps<"/next-race">) {

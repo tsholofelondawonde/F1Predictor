@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
 import { HoldoutView } from "@/features/predictions/components/HoldoutView";
 
+const title = "Holdout Predictions";
+const description =
+  "Model predictions for the most recent race, held out of training, shown against actual results.";
+
 export const metadata: Metadata = {
-  title: "Holdout Predictions",
-  description: "Model predictions for the most recent race, held out of training, shown against actual results.",
+  title,
+  description,
+  openGraph: { title, description },
+  twitter: { title, description },
 };
 
 export default async function HoldoutPage({ searchParams }: PageProps<"/holdout">) {

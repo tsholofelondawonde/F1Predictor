@@ -3,7 +3,7 @@ import { TabNav } from "@/shared/components/TabNav";
 
 export function Header() {
   return (
-    <header className="border-b border-(--color-border) px-6 py-4">
+    <header className="border-b border-(--color-border) px-4 py-4 sm:px-6 lg:px-8">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3">
         <Link
           href="/dashboard"

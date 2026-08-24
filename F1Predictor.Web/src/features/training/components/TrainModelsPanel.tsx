@@ -5,6 +5,7 @@ import { trainModels } from "@/features/training/training-service";
 import { ModelMetricCard } from "@/features/training/components/ModelMetricCard";
 import { Button } from "@/shared/components/Button";
 import { Card } from "@/shared/components/Card";
+import { StatusAnnouncer } from "@/shared/components/StatusAnnouncer";
 import { useAsyncAction } from "@/shared/lib/use-async-action";
 
 export function TrainModelsPanel() {
@@ -20,6 +21,16 @@ export function TrainModelsPanel() {
       <Button onClick={() => run(selectedYear)} disabled={status === "running"}>
         {status === "running" ? "Training…" : `Train on ${selectedYear}`}
       </Button>
+
+      <StatusAnnouncer
+        message={
+          status === "success" && result
+            ? `Training complete. Holdout race: ${result.holdoutRaceName}.`
+            : status === "error" && error
+              ? `Training failed: ${error.message}`
+              : null
+        }
+      />
 
       {status === "error" && error && <p className="mt-3 text-sm text-(--color-error-text)">{error.message}</p>}
 

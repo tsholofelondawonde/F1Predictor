@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
 import { ScenariosView } from "@/features/championship/components/ScenariosView";
 
+const title = "Title Scenarios";
+const description =
+  "What each championship contender needs to happen to win the title, with simulated title chances.";
+
 export const metadata: Metadata = {
-  title: "Title Scenarios",
-  description: "What each championship contender needs to happen to win the title, with simulated title chances.",
+  title,
+  description,
+  openGraph: { title, description },
+  twitter: { title, description },
 };
 
 export default async function ScenariosPage({ searchParams }: PageProps<"/scenarios">) {

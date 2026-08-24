@@ -32,6 +32,8 @@ internal sealed class Ingest : IEndpoint
             "season takes on the order of two minutes. Safe to re-run: sessions already stored with " +
             "results are skipped, unless force=true replaces them.")
         .Produces<IngestSeasonResponse>(StatusCodes.Status200OK)
-        .ProducesProblem(StatusCodes.Status400BadRequest);
+        .ProducesProblem(StatusCodes.Status400BadRequest)
+        .RequireApiKey()
+        .RequireRateLimiting(RateLimiterPolicies.Ingest);
     }
 }

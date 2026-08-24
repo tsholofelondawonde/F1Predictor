@@ -346,6 +346,20 @@ dotnet user-secrets set "ConnectionStrings:LocalDb" "<your Neon connection strin
 
 Neon requires SSL — the string should include `SSL Mode=Require;Trust Server Certificate=true`.
 
+`POST /api/seasons/{year}/ingest`, `/api/features/rebuild`, `/api/models/train`, and
+`/api/admin/import-legacy-sqlite` all require an `X-Api-Key` header matching
+`Security:ApiKey` — set via user secrets, never `appsettings.json`:
+
+```bash
+dotnet user-secrets set "Security:ApiKey" "<a random value>" --project F1Predictor.WebApi
+```
+
+The frontend needs the same value in `F1Predictor.Web/.env.local` as `NEXT_PUBLIC_API_KEY`
+so its own Ingest/Rebuild/Train buttons keep working (see `.env.example`). This is a low
+bar, not real access control — the key ships in the public frontend bundle, so it only
+filters out naive automated hits against the raw API, not a determined attacker. Fails
+closed: with no key configured, the four routes reject every request.
+
 ```bash
 dotnet build F1Predictor.slnx
 aspire run

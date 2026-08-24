@@ -10,15 +10,16 @@ export function DriverStandingsTable({ drivers }: DriverStandingsTableProps) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[720px] text-left text-sm">
+        <caption className="sr-only">Drivers&apos; championship standings and title chances</caption>
         <thead>
           <tr className="border-b border-(--color-border) text-(--color-muted)">
-            <th className="py-2 pr-3 font-mono text-xs font-medium uppercase tracking-wider">#</th>
-            <th className="py-2 pr-3 font-mono text-xs font-medium uppercase tracking-wider">Driver</th>
-            <th className="py-2 pr-3 font-mono text-xs font-medium uppercase tracking-wider">Team</th>
-            <th className="py-2 pr-3 text-right font-mono text-xs font-medium uppercase tracking-wider">Pts</th>
-            <th className="py-2 pr-3 text-right font-mono text-xs font-medium uppercase tracking-wider">Wins</th>
-            <th className="py-2 pr-3 font-mono text-xs font-medium uppercase tracking-wider">Title chance</th>
-            <th className="py-2 font-mono text-xs font-medium uppercase tracking-wider">Projected</th>
+            <th scope="col" className="py-2 pr-3 font-mono text-xs font-medium uppercase tracking-wider">#</th>
+            <th scope="col" className="py-2 pr-3 font-mono text-xs font-medium uppercase tracking-wider">Driver</th>
+            <th scope="col" className="py-2 pr-3 font-mono text-xs font-medium uppercase tracking-wider">Team</th>
+            <th scope="col" className="py-2 pr-3 text-right font-mono text-xs font-medium uppercase tracking-wider">Pts</th>
+            <th scope="col" className="py-2 pr-3 text-right font-mono text-xs font-medium uppercase tracking-wider">Wins</th>
+            <th scope="col" className="py-2 pr-3 font-mono text-xs font-medium uppercase tracking-wider">Title chance</th>
+            <th scope="col" className="py-2 font-mono text-xs font-medium uppercase tracking-wider">Projected</th>
           </tr>
         </thead>
         <tbody>

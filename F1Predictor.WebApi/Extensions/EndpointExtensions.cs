@@ -1,4 +1,5 @@
 using F1Predictor.WebApi.Endpoints;
+using F1Predictor.WebApi.Infrastructure;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Reflection;
 
@@ -54,13 +55,12 @@ public static class EndpointExtensions
     }
 
     /// <summary>
-    /// Adds a permission requirement to the specified route handler.
+    /// Requires a valid <c>X-Api-Key</c> header on the route, via <see cref="ApiKeyEndpointFilter"/>.
     /// </summary>
-    /// <param name="app">The <see cref="RouteHandlerBuilder"/> to apply the permission requirement to.</param>
-    /// <param name="permission">The permission string required to access the route.</param>
+    /// <param name="app">The <see cref="RouteHandlerBuilder"/> to apply the filter to.</param>
     /// <returns>The updated <see cref="RouteHandlerBuilder"/>.</returns>
-    public static RouteHandlerBuilder HasPermission(this RouteHandlerBuilder app, string permission)
+    public static RouteHandlerBuilder RequireApiKey(this RouteHandlerBuilder app)
     {
-        return app.RequireAuthorization(permission);
+        return app.AddEndpointFilter<ApiKeyEndpointFilter>();
     }
 }

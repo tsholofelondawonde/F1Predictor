@@ -64,7 +64,7 @@ export function NextRaceView({ year }: NextRaceViewProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold">{data.meetingName}</h1>
           <p className="text-sm text-(--color-muted)">

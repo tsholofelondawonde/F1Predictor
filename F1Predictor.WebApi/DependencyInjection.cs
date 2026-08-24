@@ -25,6 +25,7 @@ public static class DependencyInjection
         services.AddProblemDetails();
 
         services.AddScoped<RequestContextLoggingMiddleware>();
+        services.AddScoped<SecurityHeadersMiddleware>();
 
         // Register all endpoints from this assembly
         services.AddEndpoints(typeof(DependencyInjection).Assembly);

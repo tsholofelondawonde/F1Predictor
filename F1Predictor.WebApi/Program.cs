@@ -4,6 +4,7 @@ using F1Predictor.WebApi;
 using F1Predictor.WebApi.Extensions;
 using F1Predictor.WebApi.Infrastructure;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Scalar.AspNetCore;
@@ -16,6 +17,18 @@ var builder = WebApplication.CreateBuilder(args);
 
 // GENERATOR_ASPIRE_TOKEN: WITHOUT_ASPIRE
 builder.Services.AddObservability(builder.Environment, builder.Configuration);
+
+// Azure Container Apps terminates TLS at its ingress and forwards plain HTTP to the container,
+// so without this the UseHttpsRedirection below sees scheme "http" on every request and 307s
+// forever. The ingress is the only route to the container, and its proxy sits on neither a
+// known network nor loopback, so the default proxy allow-list has to be cleared rather than
+// extended.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 const string FrontendCorsPolicy = "Frontend";
 
@@ -71,10 +84,16 @@ if (app.Environment.IsDevelopment())
 {
     // Applied on startup rather than by hand: the connection string is injected by the Aspire
     // app host, so `dotnet ef database update` would need it configured a second time.
+    //
+    // Deliberately not applied outside Development: the container app can scale out, and
+    // concurrent replicas racing on Database.Migrate() at startup is worse than migrating
+    // out of band. Deployments run `dotnet ef database update` against Neon by hand.
     app.ApplyMigrations();
-
-    app.MapOpenApi();
 }
+
+// Must run before UseHsts/UseHttpsRedirection so the forwarded scheme is already applied when
+// they decide whether to redirect. See the ForwardedHeadersOptions comment above.
+app.UseForwardedHeaders();
 
 // Skipped in Development: the AppHost only pins an HTTP endpoint (see AppHost.cs), so a
 // redirect to the launchSettings https profile's port would point at a port nothing is
@@ -97,16 +116,19 @@ app.UseCors(FrontendCorsPolicy);
 
 app.UseRateLimiter();
 
-if (app.Environment.IsDevelopment())
+// Mapped in every environment, not just Development: the deployed container is driven from
+// Scalar, and it doubles as the deployment smoke test. Nothing here is a mutating route —
+// the four that are still sit behind the X-Api-Key filter. SecurityHeadersMiddleware already
+// exempts /scalar and /openapi from its strict CSP so the page renders.
+app.MapOpenApi();
+
+app.MapScalarApiReference(options =>
 {
-    app.MapScalarApiReference(options =>
-    {
-        options.WithTitle("Application API")
-               .WithTheme(ScalarTheme.Default)
-               .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient)
-               .WithOpenApiRoutePattern("/openapi/{documentName}.json");
-    });
-}
+    options.WithTitle("Application API")
+           .WithTheme(ScalarTheme.Default)
+           .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient)
+           .WithOpenApiRoutePattern("/openapi/{documentName}.json");
+});
 
 app.MapHealthChecks("/health", new HealthCheckOptions
 {

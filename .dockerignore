@@ -1,0 +1,49 @@
+# Build context is the repo root. Keep it small — everything here is either rebuilt inside the
+# image, irrelevant to it, or must never enter it.
+#
+# NOTE: do not add **/models/ or *.zip. F1Predictor.WebApi/models/*.zip are the trained models
+# and the Dockerfile copies them into the runtime image on purpose.
+
+# Build output
+**/bin/
+**/obj/
+**/out/
+artifacts/
+
+# Secrets and local environment
+**/secrets.json
+**/appsettings.Development.json
+**/appsettings.Production.json
+**/appsettings.Staging.json
+**/.env
+**/.env.*
+!**/.env.example
+
+# The Next.js frontend deploys separately to Vercel and is not in the .slnx
+F1Predictor.Web/
+**/node_modules/
+**/.next/
+
+# The Aspire app host orchestrates locally; it is not part of the published API
+F1Predictor.AppHost/
+
+# Tooling, IDE, VCS
+.git/
+.gitignore
+.gitattributes
+.github/
+.vs/
+.vscode/
+.idea/
+.claude/
+.agents/
+.mcp.json
+graphify-out/
+**/*.user
+**/*.suo
+**/TestResults/
+**/*.binlog
+
+# Docs
+*.md
+LICENSE.txt

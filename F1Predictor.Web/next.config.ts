@@ -10,7 +10,10 @@ const siteUrl =
     : undefined);
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  // Standalone output is for a container image. Vercel builds its own output and its
+  // trace step fails on a standalone build ("no such file ... next-server.js.nft.json"),
+  // so emit it everywhere except there.
+  ...(process.env.VERCEL ? {} : { output: "standalone" as const }),
   ...(siteUrl ? { env: { NEXT_PUBLIC_SITE_URL: siteUrl } } : {}),
 };
 

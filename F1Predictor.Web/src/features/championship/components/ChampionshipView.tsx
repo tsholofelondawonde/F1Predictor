@@ -7,6 +7,8 @@ import { ConstructorStandingsTable } from "@/features/championship/components/Co
 import { LiveFooter } from "@/shared/components/LiveFooter";
 import { Card } from "@/shared/components/Card";
 import { ErrorBanner } from "@/shared/components/ErrorBanner";
+import { TableSkeleton } from "@/shared/components/Skeleton";
+import { getErrorDisplay } from "@/shared/lib/error-display";
 import { useLiveData } from "@/shared/lib/use-live-data";
 
 interface ChampionshipViewProps {
@@ -22,7 +24,11 @@ export function ChampionshipView({ year }: ChampionshipViewProps) {
   const { data, error, loading, refreshing, lastUpdated, refresh } = useLiveData(fetcher, [year]);
 
   if (loading) {
-    return <p className="text-sm text-(--color-muted)">Loading championship…</p>;
+    return (
+      <Card>
+        <TableSkeleton rows={10} />
+      </Card>
+    );
   }
 
   if (error?.code === "Championship.NoResults") {
@@ -30,7 +36,7 @@ export function ChampionshipView({ year }: ChampionshipViewProps) {
       <ErrorBanner
         title="No results yet"
         message={`Nothing has been ingested for ${year}. Ingest the season first.`}
-        action={{ label: "Go to dashboard", href: "/" }}
+        action={{ label: "Go to dashboard", href: "/dashboard" }}
       />
     );
   }
@@ -45,7 +51,8 @@ export function ChampionshipView({ year }: ChampionshipViewProps) {
   }
 
   if (error) {
-    return <ErrorBanner title="Something went wrong" message={error.userMessage} />;
+    const { title, message } = getErrorDisplay(error);
+    return <ErrorBanner title={title} message={message} />;
   }
 
   if (!data) {
@@ -54,7 +61,7 @@ export function ChampionshipView({ year }: ChampionshipViewProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold">{data.year} Championship</h1>
           <p className="text-sm text-(--color-muted)">
@@ -66,7 +73,7 @@ export function ChampionshipView({ year }: ChampionshipViewProps) {
         </div>
 
         <div
-          className="flex rounded-md border border-(--color-border) p-0.5 text-sm"
+          className="flex rounded-(--radius) border border-(--color-border) p-0.5 font-mono text-xs uppercase tracking-wider"
           role="tablist"
           aria-label="Championship table"
         >
@@ -77,9 +84,9 @@ export function ChampionshipView({ year }: ChampionshipViewProps) {
               role="tab"
               aria-selected={table === option}
               onClick={() => setTable(option)}
-              className={`rounded px-3 py-1 capitalize transition-colors ${
+              className={`rounded-(--radius) px-3 py-1 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent) ${
                 table === option
-                  ? "bg-(--color-surface) font-medium text-(--color-foreground)"
+                  ? "bg-(--color-accent) text-(--color-on-accent)"
                   : "text-(--color-muted) hover:text-(--color-foreground)"
               }`}
             >
@@ -97,8 +104,8 @@ export function ChampionshipView({ year }: ChampionshipViewProps) {
         )}
       </Card>
 
-      <details className="rounded-lg border border-(--color-border) p-4 text-sm">
-        <summary className="cursor-pointer font-medium">
+      <details className="rounded-(--radius) border border-(--color-border) p-4 text-sm">
+        <summary className="cursor-pointer font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent)">
           How these title chances are worked out
         </summary>
         <p className="mt-2 text-(--color-muted)">{data.method}</p>

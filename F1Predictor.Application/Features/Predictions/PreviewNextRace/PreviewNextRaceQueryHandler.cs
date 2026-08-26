@@ -74,7 +74,8 @@ internal sealed class PreviewNextRaceQueryHandler(
             race.CircuitShortName,
             race.CountryName,
             race.DateStart,
-            race.HasSprint,
+            race.SprintSessionKey,
+            race.SprintDateStart,
             grid.Count > 0,
             drivers));
     }
@@ -128,7 +129,14 @@ internal sealed class PreviewNextRaceQueryHandler(
                 meeting.CircuitShortName,
                 meeting.CountryName,
                 session.DateStart,
-                context.RaceSessions.Any(s => s.MeetingKey == meeting.MeetingKey && s.IsSprint)))
+                context.RaceSessions
+                    .Where(s => s.MeetingKey == meeting.MeetingKey && s.IsSprint)
+                    .Select(s => (int?)s.SessionKey)
+                    .FirstOrDefault(),
+                context.RaceSessions
+                    .Where(s => s.MeetingKey == meeting.MeetingKey && s.IsSprint)
+                    .Select(s => (DateTimeOffset?)s.DateStart)
+                    .FirstOrDefault()))
             .AsNoTracking()
             .FirstOrDefaultAsync(cancellationToken);
     }
@@ -162,5 +170,6 @@ internal sealed class PreviewNextRaceQueryHandler(
         string CircuitShortName,
         string CountryName,
         DateTimeOffset DateStart,
-        bool HasSprint);
+        int? SprintSessionKey,
+        DateTimeOffset? SprintDateStart);
 }

@@ -1,5 +1,5 @@
 using F1Predictor.Domain.Championship;
-using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Caching.Hybrid;
 
 namespace F1Predictor.Application.Features.Championship;
 
@@ -16,15 +16,16 @@ internal static class CachedForecast
 {
     private static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(5);
 
-    public static ChampionshipForecast For(
-        IMemoryCache cache,
+    public static ValueTask<ChampionshipForecast> For(
+        HybridCache cache,
         SeasonChampionship season,
-        int simulations) =>
-        cache.GetOrCreate(season.ForecastCacheKey(simulations), entry =>
-        {
-            entry.AbsoluteExpirationRelativeToNow = Lifetime;
-
-            return ChampionshipSimulator.Run(
-                season.Standings, season.Forms, season.Remaining, simulations);
-        })!;
+        int simulations,
+        CancellationToken cancellationToken) =>
+        cache.GetOrCreateAsync(
+            season.ForecastCacheKey(simulations),
+            (season, simulations),
+            static (state, _) => ValueTask.FromResult(ChampionshipSimulator.Run(
+                state.season.Standings, state.season.Forms, state.season.Remaining, state.simulations)),
+            new HybridCacheEntryOptions { Expiration = Lifetime, LocalCacheExpiration = Lifetime },
+            cancellationToken: cancellationToken);
 }

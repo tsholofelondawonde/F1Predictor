@@ -10,21 +10,22 @@ export function ConstructorStandingsTable({ constructors }: ConstructorStandings
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[640px] text-left text-sm">
+        <caption className="sr-only">Constructors&apos; championship standings and title chances</caption>
         <thead>
           <tr className="border-b border-(--color-border) text-(--color-muted)">
-            <th className="py-2 pr-3 font-medium">#</th>
-            <th className="py-2 pr-3 font-medium">Constructor</th>
-            <th className="py-2 pr-3 text-right font-medium">Pts</th>
-            <th className="py-2 pr-3 text-right font-medium">Wins</th>
-            <th className="py-2 pr-3 font-medium">Title chance</th>
-            <th className="py-2 font-medium">Projected</th>
+            <th scope="col" className="py-2 pr-3 font-mono text-xs font-medium uppercase tracking-wider">#</th>
+            <th scope="col" className="py-2 pr-3 font-mono text-xs font-medium uppercase tracking-wider">Constructor</th>
+            <th scope="col" className="py-2 pr-3 text-right font-mono text-xs font-medium uppercase tracking-wider">Pts</th>
+            <th scope="col" className="py-2 pr-3 text-right font-mono text-xs font-medium uppercase tracking-wider">Wins</th>
+            <th scope="col" className="py-2 pr-3 font-mono text-xs font-medium uppercase tracking-wider">Title chance</th>
+            <th scope="col" className="py-2 font-mono text-xs font-medium uppercase tracking-wider">Projected</th>
           </tr>
         </thead>
         <tbody>
           {constructors.map((team) => (
             <tr
               key={team.teamName}
-              className={`border-b border-(--color-border) last:border-0 ${
+              className={`border-b border-(--color-border) transition-colors last:border-0 hover:bg-(--color-surface-hover) ${
                 team.isMathematicallyAlive ? "" : "text-(--color-muted)"
               }`}
             >
@@ -42,6 +43,7 @@ export function ConstructorStandingsTable({ constructors }: ConstructorStandings
                   value={team.titleProbability}
                   colour={teamColourCss(team.teamColour)}
                   muted={!team.isMathematicallyAlive}
+                  segmented
                 />
               </td>
               <td className="py-2 font-mono text-xs tabular-nums text-(--color-muted)">

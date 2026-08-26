@@ -11,11 +11,11 @@ export function YearSelector() {
 
   return (
     <label className="flex items-center gap-2 text-sm">
-      <span className="font-medium text-(--color-foreground)">Season</span>
+      <span className="font-mono text-xs uppercase tracking-wider text-(--color-foreground)">Season</span>
       <select
         value={selectedYear}
         onChange={(event) => setSelectedYear(Number(event.target.value))}
-        className="rounded-md border border-(--color-border) bg-(--color-surface) px-3 py-1.5"
+        className="rounded-(--radius) border border-(--color-border) bg-(--color-surface) px-3 py-1.5 font-mono tabular-nums focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent)"
       >
         {Array.from({ length: currentYear - OPENF1_FIRST_YEAR + 1 }, (_, i) => currentYear - i).map((year) => (
           <option key={year} value={year}>

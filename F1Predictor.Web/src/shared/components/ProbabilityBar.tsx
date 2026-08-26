@@ -5,29 +5,59 @@ interface ProbabilityBarProps {
   colour?: string;
   /** Dims the bar for contenders who can no longer win. */
   muted?: boolean;
+  /** Renders as a blocky HUD-meter instead of a smooth pill — dashboard tables only. */
+  segmented?: boolean;
 }
 
-export function ProbabilityBar({ value, colour, muted = false }: ProbabilityBarProps) {
+const SEGMENT_COUNT = 10;
+
+export function ProbabilityBar({ value, colour, muted = false, segmented = false }: ProbabilityBarProps) {
   const percent = Math.max(0, Math.min(1, value)) * 100;
 
   return (
     <div className="flex items-center gap-2">
-      <div
-        className="h-2 w-full min-w-16 overflow-hidden rounded-full bg-(--color-surface-hover)"
-        role="meter"
-        aria-valuenow={Number(percent.toFixed(1))}
-        aria-valuemin={0}
-        aria-valuemax={100}
-      >
+      {segmented ? (
         <div
-          className="h-full rounded-full transition-[width] duration-500"
-          style={{
-            width: `${percent}%`,
-            backgroundColor: colour ?? "var(--color-accent)",
-            opacity: muted ? 0.35 : 1,
-          }}
-        />
-      </div>
+          className="grid min-w-16 flex-1 grid-cols-10 gap-0.5"
+          role="meter"
+          aria-valuenow={Number(percent.toFixed(1))}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
+          {Array.from({ length: SEGMENT_COUNT }, (_, index) => {
+            const filled = index < Math.round((percent / 100) * SEGMENT_COUNT);
+
+            return (
+              <span
+                key={index}
+                aria-hidden="true"
+                className="h-2.5 transition-colors duration-300"
+                style={{
+                  backgroundColor: filled ? (colour ?? "var(--color-accent)") : "var(--color-surface-hover)",
+                  opacity: filled && muted ? 0.35 : 1,
+                }}
+              />
+            );
+          })}
+        </div>
+      ) : (
+        <div
+          className="h-2 w-full min-w-16 overflow-hidden rounded-(--radius-pill) bg-(--color-surface-hover)"
+          role="meter"
+          aria-valuenow={Number(percent.toFixed(1))}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
+          <div
+            className="h-full rounded-(--radius-pill) transition-[width] duration-500"
+            style={{
+              width: `${percent}%`,
+              backgroundColor: colour ?? "var(--color-accent)",
+              opacity: muted ? 0.35 : 1,
+            }}
+          />
+        </div>
+      )}
       <span className="w-14 shrink-0 text-right font-mono text-xs tabular-nums">
         {formatProbability(value)}
       </span>

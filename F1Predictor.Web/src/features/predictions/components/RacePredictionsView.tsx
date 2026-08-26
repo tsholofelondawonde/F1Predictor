@@ -6,7 +6,9 @@ import type { RacePredictionsResponse } from "@/features/predictions/predictions
 import { PredictionsTable } from "@/features/predictions/components/PredictionsTable";
 import { Card } from "@/shared/components/Card";
 import { ErrorBanner } from "@/shared/components/ErrorBanner";
+import { TableSkeleton } from "@/shared/components/Skeleton";
 import { ApiError } from "@/shared/lib/api-error";
+import { getErrorDisplay } from "@/shared/lib/error-display";
 
 interface RacePredictionsViewProps {
   sessionKey: number;
@@ -40,7 +42,11 @@ export function RacePredictionsView({ sessionKey }: RacePredictionsViewProps) {
   }, [sessionKey]);
 
   if (loading) {
-    return <p className="text-sm text-(--color-muted)">Loading predictions…</p>;
+    return (
+      <Card>
+        <TableSkeleton rows={10} />
+      </Card>
+    );
   }
 
   if (error?.code === "Prediction.ModelsNotTrained") {
@@ -48,7 +54,7 @@ export function RacePredictionsView({ sessionKey }: RacePredictionsViewProps) {
       <ErrorBanner
         title="Models not trained yet"
         message="Train the models for this season before viewing predictions."
-        action={{ label: "Go train models", href: "/" }}
+        action={{ label: "Go train models", href: "/dashboard" }}
       />
     );
   }
@@ -58,7 +64,8 @@ export function RacePredictionsView({ sessionKey }: RacePredictionsViewProps) {
   }
 
   if (error) {
-    return <ErrorBanner title="Something went wrong" message={error.userMessage} />;
+    const { title, message } = getErrorDisplay(error);
+    return <ErrorBanner title={title} message={message} />;
   }
 
   if (!data) {
@@ -66,8 +73,11 @@ export function RacePredictionsView({ sessionKey }: RacePredictionsViewProps) {
   }
 
   return (
-    <Card title={data.meetingName}>
-      <PredictionsTable drivers={data.drivers} />
-    </Card>
+    <div className="space-y-4">
+      <h1 className="text-xl font-semibold">Race Predictions</h1>
+      <Card title={data.meetingName}>
+        <PredictionsTable drivers={data.drivers} />
+      </Card>
+    </div>
   );
 }

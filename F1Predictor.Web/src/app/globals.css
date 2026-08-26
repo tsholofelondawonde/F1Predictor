@@ -14,6 +14,17 @@
   --color-error-bg: #fef2f2;
   --color-error-border: #fecaca;
   --color-error-text: #991b1b;
+  --color-landing-bg: #ffffff;
+  --color-landing-surface: #f7f7f8;
+  --color-landing-border: #e2e2e5;
+  --color-on-accent: #ffffff;
+  --color-on-podium: #241a02;
+  --color-accent-glow: rgba(185, 28, 28, 0.12);
+
+  /* Consumed via Tailwind v4 arbitrary-property syntax (rounded-(--radius)) so shared
+     components can be reskinned per surface without forking them — see .dashboard-shell. */
+  --radius: 0.5rem;
+  --radius-pill: 9999px;
 }
 
 @theme inline {
@@ -21,6 +32,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-bebas-neue);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -38,11 +50,89 @@
     --color-error-bg: #2a1414;
     --color-error-border: #5c2323;
     --color-error-text: #fca5a5;
+    --color-landing-bg: #050505;
+    --color-landing-surface: #101013;
+    --color-landing-border: #26262b;
+    --color-on-accent: #ffffff;
+    --color-on-podium: #241a02;
+    --color-accent-glow: rgba(239, 68, 68, 0.28);
+  }
+}
+
+/*
+ * The dashboard ((dashboard) route group) is a fixed-dark "tactical telemetry" cockpit,
+ * not a light/dark toggle — it does not follow prefers-color-scheme. This block is the
+ * one place the dashboard's identity is defined; every shared component (Card, Button,
+ * ProbabilityBar, tables, ...) picks it up automatically through the tokens above being
+ * overridden here, with zero per-component forking.
+ */
+.dashboard-shell {
+  --background: #0a0a0a;
+  --foreground: #eaeaea;
+  --color-surface: #121212;
+  --color-surface-hover: #1c1c1c;
+  --color-border: #2a2a2a;
+  --color-muted: #8a8a8a;
+  --color-accent: #ef4444;
+  --color-accent-hover: #ff6b6b;
+  --color-podium: #e5c158;
+  --color-points: #60a5fa;
+  --color-error-bg: #1a0d0d;
+  --color-error-border: #5c2323;
+  --color-error-text: #ff6b6b;
+  /* Near-black on the bright red fill clears WCAG AA (~5.9:1); white on this red does not. */
+  --color-on-accent: #0a0a0a;
+  --color-on-podium: #1a1300;
+  --color-accent-glow: rgba(239, 68, 68, 0.25);
+  --color-terminal-green: #4af626;
+  --radius: 0px;
+  --radius-pill: 0px;
+
+  position: relative;
+  isolation: isolate;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-mono), ui-monospace, monospace;
+}
+
+/* Section-header bracket framing, scoped to the dashboard only — see Card.tsx's .card-title. */
+.dashboard-shell .card-title::before {
+  content: "[ ";
+}
+.dashboard-shell .card-title::after {
+  content: " ]";
+}
+
+/* Faint CRT scanlines on a fixed, non-interactive layer — never on a scrolling container. */
+.dashboard-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.025),
+    rgba(255, 255, 255, 0.025) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  mix-blend-mode: overlay;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }

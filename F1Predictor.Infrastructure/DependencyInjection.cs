@@ -4,6 +4,7 @@ using F1Predictor.Application.Abstractions.MachineLearning;
 using F1Predictor.Application.Abstractions.OpenF1;
 using F1Predictor.Infrastructure.Database;
 using F1Predictor.Infrastructure.DomainEvents;
+using F1Predictor.Infrastructure.Ingestion;
 using F1Predictor.Infrastructure.Legacy;
 using F1Predictor.Infrastructure.MachineLearning;
 using F1Predictor.Infrastructure.OpenF1;
@@ -13,6 +14,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Quartz;
 using SharedKernel;
 
 namespace F1Predictor.Infrastructure;
@@ -36,6 +38,7 @@ public static class DependencyInjection
             .AddDatabase(configuration)
             .AddOpenF1(configuration)
             .AddMachineLearning(configuration)
+            .AddIngestionScheduler(configuration)
             .AddHealthChecks(configuration);
      
     /// <summary>
@@ -98,6 +101,40 @@ public static class DependencyInjection
 
         services.AddSingleton<IModelTrainer, MlNetModelTrainer>();
         services.AddSingleton<IRacePredictor, MlNetRacePredictor>();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers the Quartz job that keeps a season's data current without a human re-running
+    /// ingest — see <see cref="SeasonIngestionCoordinatorJob"/> for how it decides when to.
+    /// </summary>
+    private static IServiceCollection AddIngestionScheduler(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<IngestionSchedulerOptions>(configuration.GetSection(IngestionSchedulerOptions.SectionName));
+
+        // The trigger's interval has to be known at schedule-build time below, so it's read
+        // eagerly here in addition to the IOptions binding the job itself uses.
+        var schedulerOptions = configuration.GetSection(IngestionSchedulerOptions.SectionName)
+            .Get<IngestionSchedulerOptions>() ?? new IngestionSchedulerOptions();
+
+        if (!schedulerOptions.Enabled)
+        {
+            return services;
+        }
+
+        services.AddQuartz(quartz =>
+        {
+            var jobKey = new JobKey(nameof(SeasonIngestionCoordinatorJob));
+            quartz.AddJob<SeasonIngestionCoordinatorJob>(job => job.WithIdentity(jobKey));
+            quartz.AddTrigger(trigger => trigger
+                .ForJob(jobKey)
+                .WithSimpleSchedule(schedule => schedule
+                    .WithIntervalInMinutes(schedulerOptions.CoordinatorIntervalMinutes)
+                    .RepeatForever())
+                .StartNow());
+        });
+        services.AddQuartzHostedService(quartz => quartz.WaitForJobsToComplete = true);
 
         return services;
     }

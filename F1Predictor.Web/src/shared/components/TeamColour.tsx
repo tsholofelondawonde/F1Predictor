@@ -14,7 +14,7 @@ export function TeamColour({ colour, title }: TeamColourProps) {
     <span
       aria-hidden="true"
       title={title}
-      className="inline-block h-4 w-1 shrink-0 rounded-full align-middle"
+      className="inline-block h-4 w-1 shrink-0 rounded-(--radius-pill) align-middle"
       style={{ backgroundColor: teamColourCss(colour) }}
     />
   );

@@ -62,7 +62,7 @@ public static class DependencyInjection
         // and two use cases share the same run, so without this the same ten thousand seasons
         // would be simulated several times a minute for an answer that only moves when a race is
         // ingested. See Features/Championship/CachedForecast.
-        services.AddMemoryCache();
+        services.AddHybridCache();
 
         return services;
     }

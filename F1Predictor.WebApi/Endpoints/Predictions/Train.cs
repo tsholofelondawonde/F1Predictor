@@ -29,6 +29,8 @@ internal sealed class Train : IEndpoint
             "and F1, not accuracy — the positive classes are small minorities, so accuracy " +
             "flatters a model that predicts \"no\" every time.")
         .Produces<TrainModelsResponse>(StatusCodes.Status200OK)
-        .ProducesProblem(StatusCodes.Status400BadRequest);
+        .ProducesProblem(StatusCodes.Status400BadRequest)
+        .RequireApiKey()
+        .RequireRateLimiting(RateLimiterPolicies.Mutating);
     }
 }

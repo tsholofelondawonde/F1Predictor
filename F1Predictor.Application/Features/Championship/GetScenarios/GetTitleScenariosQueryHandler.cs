@@ -1,14 +1,14 @@
 using F1Predictor.Application.Abstractions.Data;
 using F1Predictor.Application.Abstractions.Messaging;
 using F1Predictor.Domain.Championship;
-using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Caching.Hybrid;
 using SharedKernel;
 
 namespace F1Predictor.Application.Features.Championship.GetScenarios;
 
 internal sealed class GetTitleScenariosQueryHandler(
     IApplicationDbContext context,
-    IMemoryCache cache)
+    HybridCache cache)
     : IQueryHandler<GetTitleScenariosQuery, TitleScenariosResponse>
 {
     public async Task<Result<TitleScenariosResponse>> Handle(
@@ -27,7 +27,8 @@ internal sealed class GetTitleScenariosQueryHandler(
             return Result.Failure<TitleScenariosResponse>(ChampionshipErrors.SeasonComplete(query.Year));
         }
 
-        var forecast = CachedForecast.For(cache, season, ChampionshipSimulator.DefaultSimulations);
+        var forecast = await CachedForecast.For(
+            cache, season, ChampionshipSimulator.DefaultSimulations, cancellationToken);
 
         var scenarios = TitleScenarioAnalyser.Analyse(
             season.Standings, forecast, season.RacesCompleted, query.TopN);

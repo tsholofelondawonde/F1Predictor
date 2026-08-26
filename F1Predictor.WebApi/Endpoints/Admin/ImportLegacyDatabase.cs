@@ -44,7 +44,9 @@ internal sealed class ImportLegacyDatabase : IEndpoint
             "already-ingested race data does not have to be fetched from OpenF1 again. " +
             "Idempotent: race sessions already present are skipped.")
         .Produces<LegacyImportCounts>(StatusCodes.Status200OK)
-        .ProducesProblem(StatusCodes.Status404NotFound);
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .RequireApiKey()
+        .RequireRateLimiting(RateLimiterPolicies.Mutating);
     }
 }
 

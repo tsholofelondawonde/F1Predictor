@@ -385,3 +385,6 @@ DOTNET_2026_STANDARDS_PROMPT.md
 OTEL_ASPIRE_MIGRATION_PROMPT.md
 
 /graphify-out
+
+# Claude Code skills (local only)
+.claude/skills/

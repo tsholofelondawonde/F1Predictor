@@ -33,7 +33,8 @@ export interface NextRacePreviewResponse {
   circuitShortName: string;
   countryName: string;
   dateStart: string;
-  hasSprint: boolean;
+  sprintSessionKey: number | null;
+  sprintDateStart: string | null;
   /** False until qualifying has run, in which case every grid position is projected from form. */
   gridConfirmed: boolean;
   drivers: PreviewDriver[];

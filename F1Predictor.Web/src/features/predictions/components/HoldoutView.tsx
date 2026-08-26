@@ -6,7 +6,9 @@ import type { HoldoutPredictionsResponse } from "@/features/predictions/predicti
 import { PredictionsTable } from "@/features/predictions/components/PredictionsTable";
 import { Card } from "@/shared/components/Card";
 import { ErrorBanner } from "@/shared/components/ErrorBanner";
+import { TableSkeleton } from "@/shared/components/Skeleton";
 import { ApiError } from "@/shared/lib/api-error";
+import { getErrorDisplay } from "@/shared/lib/error-display";
 
 interface HoldoutViewProps {
   year: number;
@@ -40,7 +42,11 @@ export function HoldoutView({ year }: HoldoutViewProps) {
   }, [year]);
 
   if (loading) {
-    return <p className="text-sm text-(--color-muted)">Loading holdout results…</p>;
+    return (
+      <Card>
+        <TableSkeleton rows={10} />
+      </Card>
+    );
   }
 
   if (error?.code === "Prediction.ModelsNotTrained") {
@@ -48,7 +54,7 @@ export function HoldoutView({ year }: HoldoutViewProps) {
       <ErrorBanner
         title="Models not trained yet"
         message={`Train the models for ${year} before viewing the holdout race.`}
-        action={{ label: "Go train models", href: "/" }}
+        action={{ label: "Go train models", href: "/dashboard" }}
       />
     );
   }
@@ -58,7 +64,8 @@ export function HoldoutView({ year }: HoldoutViewProps) {
   }
 
   if (error) {
-    return <ErrorBanner title="Something went wrong" message={error.userMessage} />;
+    const { title, message } = getErrorDisplay(error);
+    return <ErrorBanner title={title} message={message} />;
   }
 
   if (!data) {
@@ -66,8 +73,11 @@ export function HoldoutView({ year }: HoldoutViewProps) {
   }
 
   return (
-    <Card title={`${data.meetingName} — ${data.circuitShortName} (${data.year} holdout)`}>
-      <PredictionsTable drivers={data.drivers} />
-    </Card>
+    <div className="space-y-4">
+      <h1 className="text-xl font-semibold">Holdout Predictions</h1>
+      <Card title={`${data.meetingName} — ${data.circuitShortName} (${data.year} holdout)`}>
+        <PredictionsTable drivers={data.drivers} />
+      </Card>
+    </div>
   );
 }

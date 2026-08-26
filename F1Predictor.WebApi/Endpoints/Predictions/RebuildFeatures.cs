@@ -24,6 +24,8 @@ internal sealed class RebuildFeatures : IEndpoint
             "Clears and rebuilds every driver-race feature row. A full rebuild rather than an " +
             "incremental update, so changes to the engineering rules always take effect and " +
             "stale rows cannot survive.")
-        .Produces<RebuildFeaturesResponse>(StatusCodes.Status200OK);
+        .Produces<RebuildFeaturesResponse>(StatusCodes.Status200OK)
+        .RequireApiKey()
+        .RequireRateLimiting(RateLimiterPolicies.Mutating);
     }
 }

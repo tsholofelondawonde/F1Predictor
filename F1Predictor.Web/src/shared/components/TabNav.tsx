@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const TABS = [
-  { href: "/", label: "Dashboard" },
+  { href: "/dashboard", label: "Dashboard" },
   { href: "/next-race", label: "Next Race" },
   { href: "/championship", label: "Championship" },
   { href: "/scenarios", label: "Scenarios" },
@@ -12,16 +12,17 @@ const TABS = [
 ] as const;
 
 function isActive(pathname: string, href: string): boolean {
-  // Every path starts with "/", so the root tab has to match exactly or it would
-  // stay highlighted on every other page.
-  return href === "/" ? pathname === "/" : pathname.startsWith(href);
+  return pathname.startsWith(href);
 }
 
 export function TabNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex gap-1 text-sm" aria-label="Sections">
+    <nav
+      className="flex overflow-x-auto font-mono text-xs uppercase tracking-wider"
+      aria-label="Sections"
+    >
       {TABS.map((tab) => {
         const active = isActive(pathname, tab.href);
 
@@ -30,10 +31,10 @@ export function TabNav() {
             key={tab.href}
             href={tab.href}
             aria-current={active ? "page" : undefined}
-            className={`rounded-md px-3 py-1.5 transition-colors ${
+            className={`shrink-0 border-b-2 px-3 py-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-(--color-accent) ${
               active
-                ? "bg-(--color-surface) font-medium text-(--color-accent)"
-                : "text-(--color-muted) hover:bg-(--color-surface-hover) hover:text-(--color-foreground)"
+                ? "border-(--color-accent) text-(--color-accent)"
+                : "border-transparent text-(--color-muted) hover:border-(--color-border) hover:text-(--color-foreground)"
             }`}
           >
             {tab.label}

@@ -26,6 +26,17 @@ RUN dotnet publish F1Predictor.WebApi/F1Predictor.WebApi.csproj \
 # and ML.NET's native libraries want a full glibc userland.
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
+
+# Npgsql probes for GSSAPI/Kerberos encryption before falling back to TLS; the aspnet Debian
+# image omits the Kerberos runtime, so that probe throws
+# `libgssapi_krb5.so.2: cannot open shared object file` and the Postgres connection fails.
+# NpgsqlConnectionStrings.RequireSsl also forces SslMode=Require (which skips the probe) — this
+# package is the second line of defence. Placed before the publish COPY so it stays a cached
+# layer that source changes don't invalidate.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgssapi-krb5-2 \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=build /app/publish .
 
 # The trained models are NOT carried by dotnet publish — F1Predictor.WebApi.csproj declares no

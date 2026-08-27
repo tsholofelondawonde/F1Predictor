@@ -49,7 +49,9 @@ public class ApplicationDbContextFactory : IDesignTimeDbContextFactory<Applicati
 
         var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
 
-        optionsBuilder.UseNpgsql(connectionString);
+        // Same SSL normalisation the runtime applies (see NpgsqlConnectionStrings.RequireSsl):
+        // harmless against the credential-less placeholder above, which never connects.
+        optionsBuilder.UseNpgsql(NpgsqlConnectionStrings.RequireSsl(connectionString));
 
         // Log the configuration details for debugging
         // Pass null for domainEventsDispatcher since it's not available at design time

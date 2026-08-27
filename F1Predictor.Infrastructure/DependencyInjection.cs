@@ -157,6 +157,8 @@ public static class DependencyInjection
                 "(for production) or 'ConnectionStrings:LocalDb' (for development) is configured.");
         }
 
+        connectionString = NpgsqlConnectionStrings.RequireSsl(connectionString);
+
         services.AddDbContext<ApplicationDbContext>(options =>
         {
             options.UseNpgsql(connectionString, npgsqlOptions =>
@@ -187,7 +189,7 @@ public static class DependencyInjection
 
         if (!string.IsNullOrWhiteSpace(connectionString))
         {
-            healthChecksBuilder.AddNpgSql(connectionString);
+            healthChecksBuilder.AddNpgSql(NpgsqlConnectionStrings.RequireSsl(connectionString));
         }
 
         return services;

@@ -1,11 +1,16 @@
 import Link from "next/link";
 import { buttonClasses } from "@/shared/components/Button";
+import { Logo } from "@/shared/components/Logo";
 
 export function MarketingNav() {
   return (
     <header className="sticky top-0 z-10 border-b border-(--color-landing-border) bg-(--color-landing-bg)/80 backdrop-blur-sm">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-4">
-        <Link href="/" className="font-display text-2xl tracking-wide">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2.5 font-display text-2xl tracking-wide"
+        >
+          <Logo className="h-7 w-7 shrink-0" />
           GridMind
         </Link>
 

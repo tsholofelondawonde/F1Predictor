@@ -1,9 +1,0 @@
-{
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "nextjs",
-  "build": {
-    "env": {
-      "NEXT_PUBLIC_API_URL": "https://ca-grid-mind-api-dev-001.redcliff-ef452535.germanywestcentral.azurecontainerapps.io"
-    }
-  }
-}

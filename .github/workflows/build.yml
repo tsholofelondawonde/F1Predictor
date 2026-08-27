@@ -5,6 +5,25 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A deploy must not race another deploy: the container app runs in Single revision mode, so
+# two overlapping image swaps would fight over which revision ends up active. Queue instead
+# of cancelling — a cancelled run would leave the registry with a pushed but undeployed tag.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  REGISTRY: crgridminddev001.azurecr.io
+  REGISTRY_NAME: crgridminddev001
+  IMAGE_NAME: grid-mind-api
+  RESOURCE_GROUP: rg-grid-mind-dev-001
+  CONTAINER_APP: ca-grid-mind-api-dev-001
+  APP_URL: https://ca-grid-mind-api-dev-001.redcliff-ef452535.germanywestcentral.azurecontainerapps.io
 
 jobs:
   build:
@@ -29,3 +48,87 @@ jobs:
       # Uncomment when test projects are added under /tests/
       # - name: Test
       #   run: dotnet test F1Predictor.slnx --configuration Release --no-build --verbosity normal
+
+  deploy:
+    name: Deploy to Azure Container Apps
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write   # mint the OIDC token azure/login exchanges for an Azure AD token
+      contents: read
+
+    environment:
+      name: azure-production
+      url: https://ca-grid-mind-api-dev-001.redcliff-ef452535.germanywestcentral.azurecontainerapps.io
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Federated credentials, so there is no client secret to store or rotate. The app
+      # registration trusts two subjects: this repo's main branch, and this repo's
+      # "production" environment — declaring `environment:` above changes the token's sub
+      # claim to the latter.
+      - name: Sign in to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # The registry has its admin user disabled, so this exchanges the Azure AD token for a
+      # refresh token rather than using a username and password.
+      - name: Sign in to the container registry
+        run: az acr login --name "$REGISTRY_NAME"
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Context is the repo root, not the Dockerfile's directory: central package management
+      # puts Directory.Build.props and Directory.Packages.props there, and a restore without
+      # them fails. .dockerignore keeps the upload small.
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: F1Predictor.WebApi/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Deployed by immutable SHA tag, never by :latest. Re-pointing the app at a tag it is
+      # already on does not reliably create a revision, and a moving tag makes "which commit
+      # is live" unanswerable and a rollback guesswork. :latest is pushed as a pointer only.
+      - name: Deploy the new revision
+        run: |
+          az containerapp update \
+            --name "$CONTAINER_APP" \
+            --resource-group "$RESOURCE_GROUP" \
+            --image "$REGISTRY/$IMAGE_NAME:${{ github.sha }}" \
+            --output none
+
+      # minReplicas is 0, so the first request after a swap has to cold-start a replica and
+      # can take tens of seconds. A single curl would flake; this polls instead.
+      - name: Smoke test /health
+        run: |
+          for attempt in $(seq 1 20); do
+            body=$(curl -fsS --max-time 30 "$APP_URL/health" 2>/dev/null || true)
+            if [ -n "$body" ]; then
+              echo "$body"
+              case "$body" in
+                *'"status":"Healthy"'*)
+                  echo "Healthy after $attempt attempt(s)."
+                  exit 0
+                  ;;
+              esac
+            fi
+            echo "Attempt $attempt: not healthy yet."
+            sleep 15
+          done
+          echo "::error::/health never reported Healthy after the new revision was deployed."
+          exit 1

@@ -55,3 +55,34 @@ In production that host is Vercel: the `f1predictor` project builds from the rep
 (Production + Preview). `next.config.ts` deliberately restates none of them — Next inlines
 `NEXT_PUBLIC_*` at build time, so a value missing there is a dashboard fix and a redeploy,
 not a code change.
+
+## Deployment
+
+The API deploys itself. `.github/workflows/build.yml` builds `F1Predictor.slnx`, and on a
+push to `main` a second job builds `F1Predictor.WebApi/Dockerfile` (context: the repo root),
+pushes it to `crgridminddev001.azurecr.io/grid-mind-api`, points
+`ca-grid-mind-api-dev-001` at the new image and polls `/health` until it reports `Healthy`.
+`workflow_dispatch` runs the same path by hand.
+
+Three things about it are load-bearing:
+
+- **The image is deployed by commit SHA, never `:latest`.** Re-pointing the app at the tag
+  it already runs does not reliably create a revision, and a moving tag makes "which commit
+  is live" unanswerable. `:latest` is pushed as a pointer only.
+- **Azure is authenticated by OIDC federated credential**, not a stored client secret: the
+  app registration `gh-actions-f1predictor` trusts this repo's `main` branch and its
+  `azure-production` environment, and holds only `AcrPush` on the registry plus
+  `Contributor` on the container app. The registry's admin user is disabled, so nothing
+  else would work anyway. The repo secrets `AZURE_CLIENT_ID` / `AZURE_TENANT_ID` /
+  `AZURE_SUBSCRIPTION_ID` are identifiers, not credentials.
+- **The smoke test polls rather than curling once.** The container app sits at
+  `minReplicas: 0`, so the first request after a swap cold-starts a replica.
+
+**Migrations are not part of the pipeline.** `Program.cs` applies them only in Development,
+deliberately — the container app can scale out, and concurrent replicas racing
+`Database.Migrate()` at startup is worse than migrating out of band. After a model change,
+run `dotnet ef database update` against Neon by hand before merging the deploy.
+
+Container-app configuration is not part of the pipeline either: `Security__ApiKey`,
+`ConnectionStrings__ProdDb` and `Frontend__BaseUrl` are already set on the app, backed by
+the `api-key` and `neon-connection-string` secrets. A deploy only ever swaps the image.

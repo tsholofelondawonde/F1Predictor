@@ -68,9 +68,15 @@ jobs:
         uses: actions/checkout@v4
 
       # Federated credentials, so there is no client secret to store or rotate. The app
-      # registration trusts two subjects: this repo's main branch, and this repo's
-      # "production" environment — declaring `environment:` above changes the token's sub
-      # claim to the latter.
+      # registration trusts two subjects: this repo's main branch, and its `azure-production`
+      # environment — declaring `environment:` above changes the token's sub claim to the
+      # latter, so that is the one this job actually presents.
+      #
+      # Both trusted subjects carry GitHub's IMMUTABLE form, with the numeric owner and repo
+      # IDs embedded: `repo:<owner>@<ownerId>/<repo>@<repoId>:environment:azure-production`.
+      # GitHub issues the sub claim that way here regardless of the repo's OIDC customization
+      # setting; a credential registered with the older `repo:<owner>/<repo>:...` form is not
+      # matched and login fails with AADSTS700213.
       - name: Sign in to Azure
         uses: azure/login@v2
         with:

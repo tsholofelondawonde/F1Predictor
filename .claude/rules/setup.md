@@ -75,6 +75,24 @@ Three things about it are load-bearing:
   `Contributor` on the container app. The registry's admin user is disabled, so nothing
   else would work anyway. The repo secrets `AZURE_CLIENT_ID` / `AZURE_TENANT_ID` /
   `AZURE_SUBSCRIPTION_ID` are identifiers, not credentials.
+
+  **The trusted subjects use GitHub's immutable form** — the numeric owner and repo IDs are
+  part of the string:
+
+  ```
+  repo:tsholofelondawonde@89080883/F1Predictor@1326662270:environment:azure-production
+  repo:tsholofelondawonde@89080883/F1Predictor@1326662270:ref:refs/heads/main
+  ```
+
+  Write a credential with the older `repo:<owner>/<repo>:...` form and login fails with
+  `AADSTS700213: No matching federated identity record found`, which is exactly how the
+  deploy job failed the first time it ran. GitHub issues the sub claim this way regardless of
+  the repository's OIDC customization setting — `GET /repos/{owner}/{repo}/actions/oidc/
+  customization/sub` reports `use_default: true` while already returning the immutable
+  `sub_claim_prefix`, so there is nothing to switch off. It is also the better target: the
+  numeric IDs survive a repo or account rename. Because the deploy job declares
+  `environment: azure-production`, the `environment:` subject is the one presented; the
+  `ref:` one only matters if that block is ever removed.
 - **The smoke test polls rather than curling once.** The container app sits at
   `minReplicas: 0`, so the first request after a swap cold-starts a replica.
 

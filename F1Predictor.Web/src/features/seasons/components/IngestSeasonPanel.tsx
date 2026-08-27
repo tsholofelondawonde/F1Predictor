@@ -53,7 +53,7 @@ export function IngestSeasonPanel() {
               </thead>
               <tbody>
                 {result.meetings.map((meeting) => (
-                  <tr key={meeting.meetingName} className="border-b border-(--color-border) last:border-0">
+                  <tr key={meeting.meetingKey} className="border-b border-(--color-border) last:border-0">
                     <td className="py-1 pr-2">{meeting.meetingName}</td>
                     <td className="py-1">{IngestOutcomeLabel[meeting.outcome]}</td>
                   </tr>

@@ -10,6 +10,7 @@ public sealed record IngestSeasonResponse(
     int MeetingsIngested,
     IReadOnlyList<IngestedMeeting> Meetings);
 
+/// <param name="MeetingKey">OpenF1's stable id for the weekend — unique even when two meetings share a name.</param>
 /// <param name="MeetingName">Name of the race weekend.</param>
 /// <param name="Outcome">What happened to it — see <see cref="IngestOutcome"/>.</param>
 /// <param name="SessionsIngested">Points-scoring sessions persisted with results. Two on a sprint weekend.</param>
@@ -20,6 +21,7 @@ public sealed record IngestSeasonResponse(
 /// <param name="WeatherReadingCount">Weather samples persisted.</param>
 /// <param name="DriverEntryCount">Entry-list rows persisted — the only source of driver names and teams.</param>
 public sealed record IngestedMeeting(
+    int MeetingKey,
     string MeetingName,
     IngestOutcome Outcome,
     int SessionsIngested,
@@ -31,8 +33,8 @@ public sealed record IngestedMeeting(
     int DriverEntryCount)
 {
     /// <summary>A weekend that produced no writes at all.</summary>
-    internal static IngestedMeeting NothingToDo(string meetingName, IngestOutcome outcome) =>
-        new(meetingName, outcome, 0, 0, 0, 0, 0, 0, 0);
+    internal static IngestedMeeting NothingToDo(int meetingKey, string meetingName, IngestOutcome outcome) =>
+        new(meetingKey, meetingName, outcome, 0, 0, 0, 0, 0, 0, 0);
 }
 
 /// <summary>

@@ -83,7 +83,7 @@ internal sealed class IngestSeasonCommandHandler(
         if (pointsScoring.Count == 0)
         {
             logger.LogInformation("{MeetingName}: no race session yet, skipping.", meeting.MeetingName);
-            return IngestedMeeting.NothingToDo(meeting.MeetingName, IngestOutcome.NoRaceSession);
+            return IngestedMeeting.NothingToDo(meeting.MeetingKey, meeting.MeetingName, IngestOutcome.NoRaceSession);
         }
 
         var totals = SessionTotals.Empty;
@@ -99,6 +99,7 @@ internal sealed class IngestSeasonCommandHandler(
         }
 
         return new IngestedMeeting(
+            meeting.MeetingKey,
             meeting.MeetingName,
             Summarise(outcomes),
             outcomes.Count(o => o == IngestOutcome.Ingested),

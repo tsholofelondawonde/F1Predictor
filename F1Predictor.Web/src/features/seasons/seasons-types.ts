@@ -18,6 +18,8 @@ export const IngestOutcomeLabel: Record<IngestOutcome, string> = {
 };
 
 export interface IngestedMeeting {
+  /** OpenF1's stable id for the weekend — unique even when two meetings share a name. */
+  meetingKey: number;
   meetingName: string;
   outcome: IngestOutcome;
   /** Points-scoring sessions stored with results. Two on a sprint weekend. */

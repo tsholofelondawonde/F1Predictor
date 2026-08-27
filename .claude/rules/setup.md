@@ -48,3 +48,10 @@ Whatever hosts `F1Predictor.Web` in production must set `NEXT_PUBLIC_SITE_URL` i
 real public origin — see the comment in `F1Predictor.Web/.env.example`. It feeds
 `metadataBase`, the OpenGraph image, `robots.ts`, and `sitemap.ts`, so a stale value quietly
 breaks share previews and the sitemap's URLs, not just a cosmetic default.
+
+In production that host is Vercel: the `f1predictor` project builds from the repo with
+**Root Directory `F1Predictor.Web`** and carries `NEXT_PUBLIC_API_URL`,
+`NEXT_PUBLIC_SITE_URL` and `NEXT_PUBLIC_API_KEY` as project environment variables
+(Production + Preview). `next.config.ts` deliberately restates none of them — Next inlines
+`NEXT_PUBLIC_*` at build time, so a value missing there is a dashboard fix and a redeploy,
+not a code change.

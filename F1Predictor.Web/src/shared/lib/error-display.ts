@@ -8,7 +8,9 @@ export interface ErrorDisplay {
 /**
  * Maps an ApiError to display copy by HTTP status, for callers that haven't already
  * matched on a known backend error code. "Network"/"Timeout" (status 0) are pre-curated
- * at the source in ApiError.fromAxiosError, so those branches just relay that copy.
+ * at the source in ApiError.fromAxiosError, so those branches just relay that copy — and
+ * so does 429, which carries the wait the server named in its Retry-After header. Generic
+ * copy here would throw that away and leave "wait a moment" for what is really 5 minutes.
  */
 export function getErrorDisplay(error: ApiError): ErrorDisplay {
   if (error.status === 0 && error.code === "Timeout") {
@@ -31,7 +33,7 @@ export function getErrorDisplay(error: ApiError): ErrorDisplay {
     case 409:
       return { title: "Conflict", message: "That action conflicts with the current state — refresh and try again." };
     case 429:
-      return { title: "Too many requests", message: "You're doing that too often. Wait a moment and try again." };
+      return { title: "Too many requests", message: error.userMessage };
     case 500:
       return { title: "Server error", message: "Something went wrong on our end. Try again shortly." };
     default:

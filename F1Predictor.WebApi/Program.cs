@@ -4,10 +4,12 @@ using F1Predictor.WebApi;
 using F1Predictor.WebApi.Extensions;
 using F1Predictor.WebApi.Infrastructure;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Scalar.AspNetCore;
+using System.Globalization;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -42,6 +44,39 @@ builder.Services.AddCors(options => options.AddPolicy(FrontendCorsPolicy, policy
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // Without this, a rejection is a bare status code with a zero-length body — and the frontend
+    // cannot tell that apart from a dead server: ApiError.fromAxiosError has no body to read, so
+    // it reported every rate-limited ingest as "Could not reach the server. Check your connection."
+    // Write ProblemDetails and a Retry-After so the caller learns it is throttled, not offline.
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        var retryAfterSeconds = context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter)
+            ? (int)Math.Ceiling(retryAfter.TotalSeconds)
+            : 0;
+
+        if (retryAfterSeconds > 0)
+        {
+            context.HttpContext.Response.Headers.RetryAfter =
+                retryAfterSeconds.ToString(CultureInfo.InvariantCulture);
+        }
+
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+
+        await context.HttpContext.Response.WriteAsJsonAsync(
+            new ProblemDetails
+            {
+                Type = "https://tools.ietf.org/html/rfc9110#section-15.5.29",
+                Title = "RateLimit.Exceeded",
+                Status = StatusCodes.Status429TooManyRequests,
+                Detail = retryAfterSeconds > 0
+                    ? $"Too many requests. Try again in {FormatRetryWait(retryAfterSeconds)}."
+                    : "Too many requests. Wait a moment and try again."
+            },
+            options: null,
+            contentType: "application/problem+json",
+            cancellationToken);
+    };
 
     options.AddPolicy(RateLimiterPolicies.Ingest, httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
@@ -144,6 +179,20 @@ app.MapHealthChecks("/health", new HealthCheckOptions
 
 app.MapEndpoints();
 
+
+// The Retry-After header carries the machine-readable seconds; this is the same wait phrased
+// for a human, so the banner reads "try again in 5 minutes" rather than "in 300 seconds".
+static string FormatRetryWait(int seconds)
+{
+    if (seconds < 60)
+    {
+        return seconds == 1 ? "1 second" : $"{seconds} seconds";
+    }
+
+    var minutes = (int)Math.Ceiling(seconds / 60d);
+
+    return minutes == 1 ? "1 minute" : $"{minutes} minutes";
+}
 
 // Health check response writer
 static Task WriteHealthCheckResponse(HttpContext context, HealthReport report, string buildSha)

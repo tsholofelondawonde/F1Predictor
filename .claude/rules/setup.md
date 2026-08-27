@@ -64,7 +64,7 @@ pushes it to `crgridminddev001.azurecr.io/grid-mind-api`, points
 `ca-grid-mind-api-dev-001` at the new image and polls `/health` until it reports `Healthy`.
 `workflow_dispatch` runs the same path by hand.
 
-Three things about it are load-bearing:
+Four things about it are load-bearing:
 
 - **The image is deployed by commit SHA, never `:latest`.** Re-pointing the app at the tag
   it already runs does not reliably create a revision, and a moving tag makes "which commit
@@ -93,8 +93,25 @@ Three things about it are load-bearing:
   numeric IDs survive a repo or account rename. Because the deploy job declares
   `environment: azure-production`, the `environment:` subject is the one presented; the
   `ref:` one only matters if that block is ever removed.
-- **The smoke test polls rather than curling once.** The container app sits at
-  `minReplicas: 0`, so the first request after a swap cold-starts a replica.
+- **The smoke test polls rather than curling once, and asserts the commit, not just
+  `Healthy`.** The container app sits at `minReplicas: 0`, so the first request after a swap
+  cold-starts a replica — hence the poll (`.github/scripts/wait-for-health.sh`, 20 × 15s).
+  The commit check matters for a subtler reason: `az containerapp update` returns once the
+  update is *accepted*, and if the new revision then fails to provision, the container app
+  keeps the previous revision serving. `/health` answers `Healthy` — from the old code — and
+  a status-only check would report that as a successful deploy of a commit that never ran.
+  So the Dockerfile bakes `GIT_SHA` into `BUILD_SHA`, `/health` echoes it as `build`, and the
+  poll requires both. The `ARG` sits in the final stage, after the publish `COPY`, so a new
+  SHA every commit invalidates one layer rather than the whole build cache.
+- **A failed smoke test rolls back, and verifies the rollback.** The app runs in Single
+  revision mode, so the new revision already holds 100% of traffic by the time the poll
+  starts: a failure is a live outage, not a pending one. The workflow records the running
+  image *before* the update and re-deploys it on failure, refusing to act when there is no
+  previous image or when it is the same SHA (a re-run would otherwise "roll back" to the
+  failing build and report success). The rollback is then polled too — it creates a *third*
+  revision from the old image, a cold start rather than a reactivation, so an environmental
+  failure (Neon unreachable, a bad `Security__ApiKey`) reproduces on it, and the workflow says
+  "the API is down" instead of "rolled back".
 
 **Migrations are not part of the pipeline.** `Program.cs` applies them only in Development,
 deliberately — the container app can scale out, and concurrent replicas racing

@@ -130,21 +130,29 @@ app.MapScalarApiReference(options =>
            .WithOpenApiRoutePattern("/openapi/{documentName}.json");
 });
 
+// BUILD_SHA is baked into the image by the Dockerfile's GIT_SHA build arg, so the payload names
+// the commit that is actually answering rather than just asserting something is. The deploy
+// workflow's smoke test asserts on it: a new revision that fails to provision leaves the previous
+// one serving, and "Healthy" on its own would report that as a successful deploy. Outside CI this
+// is "unknown", which is honest — a local or Aspire run is not a build.
+var buildSha = app.Configuration["BUILD_SHA"] ?? "unknown";
+
 app.MapHealthChecks("/health", new HealthCheckOptions
 {
-    ResponseWriter = WriteHealthCheckResponse
+    ResponseWriter = (context, report) => WriteHealthCheckResponse(context, report, buildSha)
 });
 
 app.MapEndpoints();
 
 
 // Health check response writer
-static Task WriteHealthCheckResponse(HttpContext context, HealthReport report)
+static Task WriteHealthCheckResponse(HttpContext context, HealthReport report, string buildSha)
 {
     context.Response.ContentType = "application/json";
     var response = new
     {
         status = report.Status.ToString(),
+        build = buildSha,
         timestamp = DateTime.UtcNow,
         checks = report.Entries.Select(e => new
         {

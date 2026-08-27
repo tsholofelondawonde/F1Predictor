@@ -38,6 +38,18 @@ COPY --from=build /app/publish .
 # therefore load-bearing: change it and MachineLearning:ModelDirectory must change with it.
 COPY --chown=$APP_UID:$APP_UID F1Predictor.WebApi/models/ ./models/
 
+# Stamped by CI so /health can prove WHICH commit answered it, not merely that something did.
+# `az containerapp update` returns once the update is accepted, and if the new revision fails to
+# provision the container app keeps the PREVIOUS one serving — so a /health that only reports
+# Healthy cannot tell a successful deploy from a failed one. See the smoke test in
+# .github/workflows/build.yml.
+#
+# Declared in the final stage, after the publish COPY: a new SHA on every commit then invalidates
+# only this layer, leaving the restore and publish layers — and so the GHA build cache — intact.
+# Move this ARG any earlier and every commit rebuilds the whole image.
+ARG GIT_SHA=""
+ENV BUILD_SHA=$GIT_SHA
+
 # Non-root. The chown above keeps a `train` call working within a replica's lifetime; the
 # result is ephemeral, and retraining for real means committing new .zip files and rebuilding.
 USER $APP_UID

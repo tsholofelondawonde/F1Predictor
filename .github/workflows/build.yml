@@ -100,6 +100,9 @@ jobs:
         with:
           context: .
           file: F1Predictor.WebApi/Dockerfile
+          # Stamps the commit into the image so /health can name it back — see the Dockerfile.
+          build-args: |
+            GIT_SHA=${{ github.sha }}
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
@@ -107,10 +110,24 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # Recorded BEFORE the update below — that is the last moment the image the app is currently
+      # serving can still be read off it. The rollback step re-deploys exactly this.
+      - name: Capture the live image
+        id: current
+        run: |
+          previous=$(az containerapp show \
+            --name "$CONTAINER_APP" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query "properties.template.containers[0].image" \
+            --output tsv)
+          echo "Currently deployed: ${previous:-<none>}"
+          echo "image=$previous" >> "$GITHUB_OUTPUT"
+
       # Deployed by immutable SHA tag, never by :latest. Re-pointing the app at a tag it is
       # already on does not reliably create a revision, and a moving tag makes "which commit
       # is live" unanswerable and a rollback guesswork. :latest is pushed as a pointer only.
       - name: Deploy the new revision
+        id: deploy
         run: |
           az containerapp update \
             --name "$CONTAINER_APP" \
@@ -118,23 +135,58 @@ jobs:
             --image "$REGISTRY/$IMAGE_NAME:${{ github.sha }}" \
             --output none
 
-      # minReplicas is 0, so the first request after a swap has to cold-start a replica and
-      # can take tens of seconds. A single curl would flake; this polls instead.
+      # The script polls rather than curling once (minReplicas is 0, so the swap cold-starts a
+      # replica) and asserts the commit rather than just the status — see its header for why a
+      # Healthy /health is not on its own evidence that this build is the one serving.
       - name: Smoke test /health
+        id: smoke
+        run: bash .github/scripts/wait-for-health.sh "${{ github.sha }}"
+
+      # The container app runs in Single revision mode, so by the time the smoke test runs the new
+      # revision already holds 100% of traffic: a failure above is a live outage, not a pending
+      # one. Put the previous image back and verify that too.
+      #
+      # Note this creates a THIRD revision from the old image — a fresh cold start, not a
+      # reactivation of the old revision. So a failure that was environmental rather than in the
+      # image (Neon unreachable, a bad Security__ApiKey) will reproduce on the rollback, which is
+      # exactly why its own health poll has to be checked before claiming anything was fixed.
+      #
+      # Scoped to a failure at or after the update: a bare `failure()` would also fire for a failed
+      # checkout, login or image build, where nothing was deployed and a "rollback" would only
+      # churn a pointless revision on an app nobody touched.
+      - name: Roll back to the previous image
+        if: failure() && steps.deploy.outcome != 'skipped'
+        env:
+          PREVIOUS_IMAGE: ${{ steps.current.outputs.image }}
         run: |
-          for attempt in $(seq 1 20); do
-            body=$(curl -fsS --max-time 30 "$APP_URL/health" 2>/dev/null || true)
-            if [ -n "$body" ]; then
-              echo "$body"
-              case "$body" in
-                *'"status":"Healthy"'*)
-                  echo "Healthy after $attempt attempt(s)."
-                  exit 0
-                  ;;
-              esac
-            fi
-            echo "Attempt $attempt: not healthy yet."
-            sleep 15
-          done
-          echo "::error::/health never reported Healthy after the new revision was deployed."
-          exit 1
+          if [ -z "$PREVIOUS_IMAGE" ]; then
+            echo "::error::No previous image was recorded, so there is nothing to roll back to. ${{ github.sha }} is still live and unverified — recover by hand."
+            exit 1
+          fi
+
+          previous_tag="${PREVIOUS_IMAGE##*:}"
+          if [ "$previous_tag" = "${{ github.sha }}" ]; then
+            echo "::error::The app was already on ${{ github.sha }} before this run (a re-run, or a dispatch on unchanged main), so a rollback would be a no-op that silently leaves the failing build live. Deploy a known-good commit instead."
+            exit 1
+          fi
+
+          echo "Rolling back to $PREVIOUS_IMAGE."
+          az containerapp update \
+            --name "$CONTAINER_APP" \
+            --resource-group "$RESOURCE_GROUP" \
+            --image "$PREVIOUS_IMAGE" \
+            --output none
+
+          # Only a SHA tag names a build /health can be asserted against; :latest, or an image
+          # pushed before the build field existed, has nothing useful to match on.
+          expected=""
+          if printf '%s' "$previous_tag" | grep -Eq '^[0-9a-f]{40}$'; then
+            expected="$previous_tag"
+          fi
+
+          if bash .github/scripts/wait-for-health.sh "$expected"; then
+            echo "::error::Smoke test failed for ${{ github.sha }}; rolled back to $PREVIOUS_IMAGE and confirmed it healthy. The failing revision held all traffic for the duration of the poll — read the container app logs before retrying."
+          else
+            echo "::error::Smoke test failed for ${{ github.sha }} AND the rollback to $PREVIOUS_IMAGE did not come back healthy — the API is down. A failure that survives the rollback is usually environmental rather than in the image: check the container app's secrets and the Neon connection before redeploying."
+            exit 1
+          fi

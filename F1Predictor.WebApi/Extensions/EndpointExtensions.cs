@@ -55,12 +55,17 @@ public static class EndpointExtensions
     }
 
     /// <summary>
-    /// Requires a valid <c>X-Api-Key</c> header on the route, via <see cref="ApiKeyEndpointFilter"/>.
+    /// Requires a valid <c>X-Api-Key</c> header on the route, enforced by
+    /// <see cref="Middleware.ApiKeyMiddleware"/>.
     /// </summary>
-    /// <param name="app">The <see cref="RouteHandlerBuilder"/> to apply the filter to.</param>
+    /// <param name="app">The <see cref="RouteHandlerBuilder"/> to mark.</param>
     /// <returns>The updated <see cref="RouteHandlerBuilder"/>.</returns>
+    /// <remarks>
+    /// This attaches metadata rather than an endpoint filter so the check runs ahead of the rate
+    /// limiter — see <see cref="RequireApiKeyMetadata"/> for why that ordering matters.
+    /// </remarks>
     public static RouteHandlerBuilder RequireApiKey(this RouteHandlerBuilder app)
     {
-        return app.AddEndpointFilter<ApiKeyEndpointFilter>();
+        return app.WithMetadata(RequireApiKeyMetadata.Instance);
     }
 }

@@ -26,6 +26,7 @@ public static class DependencyInjection
 
         services.AddScoped<RequestContextLoggingMiddleware>();
         services.AddScoped<SecurityHeadersMiddleware>();
+        services.AddScoped<ApiKeyMiddleware>();
 
         // Register all endpoints from this assembly
         services.AddEndpoints(typeof(DependencyInjection).Assembly);

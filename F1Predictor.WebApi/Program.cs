@@ -149,11 +149,17 @@ app.UseRouting();
 
 app.UseCors(FrontendCorsPolicy);
 
+// Ahead of UseRateLimiter deliberately: the limiter charges a permit the moment it admits a
+// request, so an unauthenticated caller would otherwise spend the ingest budget (1 per 5 minutes)
+// and the next legitimate click would be told it was rate limited rather than that its key was
+// wrong. Behind UseCors so the 401 still carries the headers the browser needs to read it.
+app.UseApiKeyValidation();
+
 app.UseRateLimiter();
 
 // Mapped in every environment, not just Development: the deployed container is driven from
 // Scalar, and it doubles as the deployment smoke test. Nothing here is a mutating route —
-// the four that are still sit behind the X-Api-Key filter. SecurityHeadersMiddleware already
+// the four that are still sit behind the X-Api-Key middleware. SecurityHeadersMiddleware already
 // exempts /scalar and /openapi from its strict CSP so the page renders.
 app.MapOpenApi();
 

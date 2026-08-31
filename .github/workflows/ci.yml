@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build & Verify
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Restore dependencies
+        run: dotnet restore F1Predictor.slnx
+
+      - name: Build
+        run: dotnet build F1Predictor.slnx --configuration Release --no-restore
+
+      # Uncomment when test projects are added under /tests/
+      # - name: Test
+      #   run: dotnet test F1Predictor.slnx --configuration Release --no-build --verbosity normal

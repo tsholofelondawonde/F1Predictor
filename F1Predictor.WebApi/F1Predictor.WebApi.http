@@ -1,0 +1,36 @@
+@host = http://localhost:5286
+@year = 2024
+@apiKey = replace-with-your-Security__ApiKey
+
+### Health
+GET {{host}}/health
+
+### Ingest a season from OpenF1 (~4-5 min, idempotent)
+POST {{host}}/api/seasons/{{year}}/ingest
+X-Api-Key: {{apiKey}}
+
+### List ingested sessions
+GET {{host}}/api/seasons/{{year}}/races
+
+### Rebuild the feature table
+POST {{host}}/api/features/rebuild
+X-Api-Key: {{apiKey}}
+
+### Train both models
+POST {{host}}/api/models/train?year={{year}}
+X-Api-Key: {{apiKey}}
+
+### Holdout: predictions vs. reality
+GET {{host}}/api/seasons/{{year}}/holdout
+
+### Next-race preview
+GET {{host}}/api/seasons/{{year}}/next-race
+
+### Standings
+GET {{host}}/api/seasons/{{year}}/standings
+
+### Championship forecast
+GET {{host}}/api/seasons/{{year}}/championship-forecast
+
+### Title scenarios
+GET {{host}}/api/seasons/{{year}}/title-scenarios?topN=5

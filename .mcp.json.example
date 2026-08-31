@@ -1,0 +1,10 @@
+{
+  "//": "Optional. Copy to .mcp.json to expose the graphify knowledge graph (graphify-out/) over MCP. Requires the `graphify` CLI on your PATH: https://github.com/anthropics/graphify",
+  "mcpServers": {
+    "graphify": {
+      "type": "stdio",
+      "command": "graphify-mcp",
+      "args": ["graphify-out/graph.json", "--transport", "stdio"]
+    }
+  }
+}

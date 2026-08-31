@@ -78,7 +78,7 @@ jobs:
       # setting; a credential registered with the older `repo:<owner>/<repo>:...` form is not
       # matched and login fails with AADSTS700213.
       - name: Sign in to Azure
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}

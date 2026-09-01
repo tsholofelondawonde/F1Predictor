@@ -90,7 +90,7 @@ jobs:
         run: az acr login --name "$REGISTRY_NAME"
 
       - name: Set up Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       # Context is the repo root, not the Dockerfile's directory: central package management
       # puts Directory.Build.props and Directory.Packages.props there, and a restore without

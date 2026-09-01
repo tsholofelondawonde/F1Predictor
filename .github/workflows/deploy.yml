@@ -96,7 +96,7 @@ jobs:
       # puts Directory.Build.props and Directory.Packages.props there, and a restore without
       # them fails. .dockerignore keeps the upload small.
       - name: Build and push image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: F1Predictor.WebApi/Dockerfile

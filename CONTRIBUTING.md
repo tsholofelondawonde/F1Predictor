@@ -7,6 +7,8 @@ pull requests are both welcome.
 
 - Open an issue before a large change so we can agree on the approach.
 - Keep PRs focused. One concern per PR.
+- `main` is protected — every change lands through a pull request with a green
+  **Build & Verify** check. No direct pushes.
 - Be respectful — see [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
 
 ## Getting set up
@@ -53,10 +55,11 @@ Code style and architecture rules are documented under `.claude/rules/` — read
 - `Result<T>` from every handler; exceptions only for genuine programmer errors.
 - File-scoped namespaces, `sealed` implementations, `internal` by default.
 
-## Before you push
+## Before you open a PR
 
 - `dotnet build F1Predictor.slnx` must pass. **Warnings are errors** in this repo
   (`TreatWarningsAsErrors`, analysis level `latest`, Meziantou / Sonar / Roslynator analyzers).
+  CI runs the same build as the required **Build & Verify** check.
 - `cd F1Predictor.Web && npm run lint` for frontend changes.
 - If you changed an EF model, add a migration (see `setup.md`) — but do **not** run
   migrations against a shared database as part of the PR.

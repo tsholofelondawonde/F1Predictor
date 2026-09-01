@@ -130,3 +130,37 @@ run `dotnet ef database update` against Neon by hand before merging the deploy.
 Container-app configuration is not part of the pipeline either: `Security__ApiKey`,
 `ConnectionStrings__ProdDb` and `Frontend__BaseUrl` are already set on the app, backed by
 the `api-key` and `neon-connection-string` secrets. A deploy only ever swaps the image.
+
+## Branch protection
+
+`main` is protected by a repository **ruleset** named `protect-main`, checked in at
+`.github/rulesets/protect-main.json`. Branch protection is not available on a private repo on
+the Free plan, so this is applied **once, right after the repo is made public** (or after an
+upgrade to GitHub Pro):
+
+```bash
+gh api --method POST repos/tsholofelondawonde/F1Predictor/rulesets \
+  --input .github/rulesets/protect-main.json
+```
+
+Expect `201` and a ruleset id. Confirm with
+`gh api repos/tsholofelondawonde/F1Predictor/rulesets`. To change the ruleset later, edit the
+JSON and `PUT` it to `.../rulesets/<id>`.
+
+What it enforces on `~DEFAULT_BRANCH`:
+
+- **No force-push, no deletion** (`non_fast_forward`, `deletion`).
+- **A pull request before merge**, with `required_approving_review_count: 0` — a solo
+  maintainer can't approve their own PR, so this gates on CI rather than review. `CODEOWNERS`
+  still auto-requests a review, but `require_code_owner_review` is off, so it doesn't block.
+- **`Build & Verify` must pass** — the job name in `.github/workflows/ci.yml`, which runs on
+  every PR. (`deploy.yml` also has a job of that name, but it only fires on push to `main`, so
+  on a PR the check resolves to the CI run.) `strict_required_status_checks_policy: true` also
+  requires the PR branch to be up to date with `main` before it can merge.
+- **Admins bypass** (`bypass_actors`, `bypass_mode: always`) so a hotfix can still go straight
+  to `main`. `actor_id: 5` is the built-in Admin role — verify against
+  `gh api repos/tsholofelondawonde/F1Predictor/rulesets/rule-suites` on first run and adjust
+  if GitHub reports a different id. Drop the `bypass_actors` entry to enforce on everyone.
+
+Dependabot PRs gate on `Build & Verify` like any other PR; merge them once green (or enable
+auto-merge separately).

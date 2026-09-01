@@ -34,10 +34,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup .NET 10
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.x'
 
@@ -65,7 +65,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # Federated credentials, so there is no client secret to store or rotate. The app
       # registration trusts two subjects: this repo's main branch, and its `azure-production`
@@ -78,7 +78,7 @@ jobs:
       # setting; a credential registered with the older `repo:<owner>/<repo>:...` form is not
       # matched and login fails with AADSTS700213.
       - name: Sign in to Azure
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -90,13 +90,13 @@ jobs:
         run: az acr login --name "$REGISTRY_NAME"
 
       - name: Set up Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       # Context is the repo root, not the Dockerfile's directory: central package management
       # puts Directory.Build.props and Directory.Packages.props there, and a restore without
       # them fails. .dockerignore keeps the upload small.
       - name: Build and push image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: F1Predictor.WebApi/Dockerfile

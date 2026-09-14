@@ -46,6 +46,10 @@ export interface SeasonRace {
   circuitShortName: string;
   countryName: string;
   dateStart: string;
+  /** The weekend's sprint rather than its Grand Prix. Scores points but is never predicted. */
+  isSprint: boolean;
+  /** Results published. False means the session has not run yet. */
+  isClassified: boolean;
   featureRowCount: number;
 }
 

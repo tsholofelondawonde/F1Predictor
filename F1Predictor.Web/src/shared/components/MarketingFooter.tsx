@@ -21,9 +21,14 @@ export function MarketingFooter() {
           </a>{" "}
           · ML.NET SDCA classifiers · Monte Carlo championship simulation
         </p>
-        <Link href="/dashboard" className="font-medium text-(--color-accent) hover:underline">
-          Open the dashboard
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link href="/roadmap" className="hover:text-(--color-foreground) hover:underline">
+            Roadmap
+          </Link>
+          <Link href="/dashboard" className="font-medium text-(--color-accent) hover:underline">
+            Open the dashboard
+          </Link>
+        </div>
       </div>
     </footer>
   );

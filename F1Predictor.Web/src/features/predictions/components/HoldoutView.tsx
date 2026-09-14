@@ -4,7 +4,10 @@ import { useEffect, useState } from "react";
 import { getHoldoutPredictions } from "@/features/predictions/predictions-service";
 import type { HoldoutPredictionsResponse } from "@/features/predictions/predictions-types";
 import { PredictionsTable } from "@/features/predictions/components/PredictionsTable";
+import { getDataStatus } from "@/features/seasons/seasons-service";
+import type { DataStatus } from "@/features/seasons/seasons-types";
 import { Card } from "@/shared/components/Card";
+import { DataStalenessBanner } from "@/shared/components/DataStalenessBanner";
 import { ErrorBanner } from "@/shared/components/ErrorBanner";
 import { TableSkeleton } from "@/shared/components/Skeleton";
 import { ApiError } from "@/shared/lib/api-error";
@@ -18,6 +21,23 @@ export function HoldoutView({ year }: HoldoutViewProps) {
   const [data, setData] = useState<HoldoutPredictionsResponse | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dataStatus, setDataStatus] = useState<DataStatus | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    getDataStatus(year)
+      .then((response) => {
+        if (!cancelled) setDataStatus(response);
+      })
+      .catch(() => {
+        // Purely a nudge — a failed status check just means no banner, not a page error.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [year]);
 
   useEffect(() => {
     let cancelled = false;
@@ -74,6 +94,8 @@ export function HoldoutView({ year }: HoldoutViewProps) {
 
   return (
     <div className="space-y-4">
+      <DataStalenessBanner status={dataStatus} />
+
       <h1 className="text-xl font-semibold">Holdout Predictions</h1>
       <Card title={`${data.meetingName} — ${data.circuitShortName} (${data.year} holdout)`}>
         <PredictionsTable drivers={data.drivers} />

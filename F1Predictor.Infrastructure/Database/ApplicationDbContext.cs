@@ -21,6 +21,10 @@ public class ApplicationDbContext(
     public DbSet<DriverEntry> DriverEntries { get; set; } = null!;
     public DbSet<DriverRaceFeature> DriverRaceFeatures { get; set; } = null!;
 
+    public Task AcquireSessionAdvisoryLockAsync(int sessionKey, CancellationToken cancellationToken) =>
+        Database.ExecuteSqlInterpolatedAsync(
+            $"SELECT pg_advisory_xact_lock({sessionKey})", cancellationToken);
+
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         int result = await base.SaveChangesAsync(cancellationToken);

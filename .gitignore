@@ -409,3 +409,5 @@ OTEL_ASPIRE_MIGRATION_PROMPT.md
 # build time; only the ones under F1Predictor.WebApi/models/ are intentionally tracked.
 *.zip
 !F1Predictor.WebApi/models/*.zip
+
+/docs

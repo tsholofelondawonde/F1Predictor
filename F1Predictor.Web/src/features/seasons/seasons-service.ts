@@ -1,5 +1,10 @@
 import { api } from "@/shared/lib/api";
-import type { IngestSeasonResponse, RebuildFeaturesResponse, SeasonRace } from "@/features/seasons/seasons-types";
+import type {
+  DataStatus,
+  IngestSeasonResponse,
+  RebuildFeaturesResponse,
+  SeasonRace,
+} from "@/features/seasons/seasons-types";
 
 // A full season ingest is verified to take 300s+ (a ~500ms politeness delay per OpenF1 call,
 // across ~20+ meetings x ~5 calls each) — override the default axios timeout so the browser
@@ -18,4 +23,8 @@ export function getSeasonRaces(year: number): Promise<SeasonRace[]> {
 
 export function rebuildFeatures(): Promise<RebuildFeaturesResponse> {
   return api.post<RebuildFeaturesResponse>("/features/rebuild").then((response) => response.data);
+}
+
+export function getDataStatus(year: number): Promise<DataStatus> {
+  return api.get<DataStatus>(`/seasons/${year}/data-status`).then((response) => response.data);
 }

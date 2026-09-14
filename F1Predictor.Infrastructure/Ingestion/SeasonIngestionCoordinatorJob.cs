@@ -19,6 +19,7 @@ namespace F1Predictor.Infrastructure.Ingestion;
 /// due — so this can run far more often than a season would ever need re-fetching without
 /// wasting the free, rate-limited API on seasons that haven't changed.
 /// </remarks>
+[DisallowConcurrentExecution]
 internal sealed class SeasonIngestionCoordinatorJob(
     IApplicationDbContext dbContext,
     ICommandHandler<IngestSeasonCommand, IngestSeasonResponse> ingestHandler,

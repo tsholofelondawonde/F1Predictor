@@ -214,10 +214,7 @@ internal sealed class IngestSeasonCommandHandler(
             return false;
         }
 
-        if (existing is not null)
-        {
-            await ClearSessionAsync(session.SessionKey, cancellationToken);
-        }
+        await ClearSessionAsync(session.SessionKey, cancellationToken);
 
         await PersistSessionAsync(session, isSprint, payload, cancellationToken);
 
@@ -270,9 +267,14 @@ internal sealed class IngestSeasonCommandHandler(
     }
 
     /// <summary>
-    /// Removes everything previously stored for a session so it can be written fresh. Used
-    /// both by <c>force</c> and by the scheduled-to-classified transition, where the placeholder
-    /// row and its entry list have to give way to the real thing.
+    /// Removes everything previously stored for a session so it can be written fresh. Called
+    /// unconditionally, even when no <see cref="RaceSession"/> row exists yet: a prior partial
+    /// write can otherwise leave orphaned child rows (e.g. <c>DriverEntries</c>) for a
+    /// <c>SessionKey</c> whose <c>RaceSessions</c> row never committed, which would collide with
+    /// the fresh insert below since <c>existing is null</c> would skip this clear. Each delete is
+    /// a no-op when nothing matches, so this is cheap on the common brand-new-session path too.
+    /// Also used by <c>force</c> and by the scheduled-to-classified transition, where the
+    /// placeholder row and its entry list have to give way to the real thing.
     /// </summary>
     private async Task ClearSessionAsync(int sessionKey, CancellationToken cancellationToken)
     {

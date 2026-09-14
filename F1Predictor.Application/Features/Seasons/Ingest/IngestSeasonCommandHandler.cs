@@ -134,27 +134,30 @@ internal sealed class IngestSeasonCommandHandler(
         var isSprint = string.Equals(session.SessionName, SprintSessionName, StringComparison.Ordinal);
         var label = $"{meeting.MeetingName} ({session.SessionName})";
 
-        var existing = await context.RaceSessions
+        // Cheap early-out before bothering with a lock or the OpenF1 round trips below. The
+        // authoritative check — the one that actually decides skip vs. ingest — runs again
+        // after the advisory lock is acquired, since a concurrent writer may commit between
+        // this read and that point.
+        var precheck = await context.RaceSessions
             .AsNoTracking()
             .FirstOrDefaultAsync(s => s.SessionKey == session.SessionKey, cancellationToken);
 
-        // A session already stored with results is settled; anything else is re-checked so a
-        // scheduled race is picked up automatically once it runs. `force` re-fetches either way,
-        // which is the only route by which a provisional classification ever gets corrected.
-        if (existing is { IsClassified: true } && !force)
+        if (precheck is { IsClassified: true } && !force)
         {
             logger.LogInformation("{Label}: already ingested, skipping.", label);
             return (IngestOutcome.AlreadyPresent, SessionTotals.Empty);
         }
 
+        // No reason to hold a DB lock across network I/O, so fetch before taking it.
         var payload = await FetchSessionAsync(session, allSessions, isSprint, cancellationToken);
 
-        if (existing is not null)
-        {
-            await ClearSessionAsync(session.SessionKey, cancellationToken);
-        }
+        var written = await WriteSessionUnderLockAsync(session, isSprint, force, payload, cancellationToken);
 
-        await PersistSessionAsync(session, isSprint, payload, cancellationToken);
+        if (!written)
+        {
+            logger.LogInformation("{Label}: already ingested by a concurrent run, skipping.", label);
+            return (IngestOutcome.AlreadyPresent, SessionTotals.Empty);
+        }
 
         var totals = new SessionTotals(
             payload.Results.Count,
@@ -179,6 +182,45 @@ internal sealed class IngestSeasonCommandHandler(
             payload.Weather.Count, payload.Drivers.Count);
 
         return (IngestOutcome.Ingested, totals);
+    }
+
+    /// <summary>
+    /// Clears and re-persists one session's rows inside a transaction guarded by a Postgres
+    /// advisory lock keyed on <paramref name="session"/>'s key. Two triggers can otherwise race
+    /// to ingest the same session — a manual API call overlapping the Quartz coordinator's
+    /// startup tick, or, once this app scales beyond one replica, each replica's own scheduler
+    /// firing independently. The lock, held for the life of the transaction, serializes them at
+    /// the database so the loser re-checks post-commit state and skips instead of racing the
+    /// unique index on <c>DriverEntries</c>.
+    /// </summary>
+    /// <returns>False if a concurrent run already classified this session and <paramref name="force"/> is not set.</returns>
+    private async Task<bool> WriteSessionUnderLockAsync(
+        OpenF1Session session,
+        bool isSprint,
+        bool force,
+        SessionPayload payload,
+        CancellationToken cancellationToken)
+    {
+        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+
+        await context.AcquireSessionAdvisoryLockAsync(session.SessionKey, cancellationToken);
+
+        var existing = await context.RaceSessions
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.SessionKey == session.SessionKey, cancellationToken);
+
+        if (existing is { IsClassified: true } && !force)
+        {
+            return false;
+        }
+
+        await ClearSessionAsync(session.SessionKey, cancellationToken);
+
+        await PersistSessionAsync(session, isSprint, payload, cancellationToken);
+
+        await transaction.CommitAsync(cancellationToken);
+
+        return true;
     }
 
     /// <summary>
@@ -225,9 +267,14 @@ internal sealed class IngestSeasonCommandHandler(
     }
 
     /// <summary>
-    /// Removes everything previously stored for a session so it can be written fresh. Used
-    /// both by <c>force</c> and by the scheduled-to-classified transition, where the placeholder
-    /// row and its entry list have to give way to the real thing.
+    /// Removes everything previously stored for a session so it can be written fresh. Called
+    /// unconditionally, even when no <see cref="RaceSession"/> row exists yet: a prior partial
+    /// write can otherwise leave orphaned child rows (e.g. <c>DriverEntries</c>) for a
+    /// <c>SessionKey</c> whose <c>RaceSessions</c> row never committed, which would collide with
+    /// the fresh insert below since <c>existing is null</c> would skip this clear. Each delete is
+    /// a no-op when nothing matches, so this is cheap on the common brand-new-session path too.
+    /// Also used by <c>force</c> and by the scheduled-to-classified transition, where the
+    /// placeholder row and its entry list have to give way to the real thing.
     /// </summary>
     private async Task ClearSessionAsync(int sessionKey, CancellationToken cancellationToken)
     {

@@ -3,8 +3,10 @@
 import { useCallback } from "react";
 import { getNextRacePreview } from "@/features/predictions/predictions-service";
 import { PreviewTable } from "@/features/predictions/components/PreviewTable";
+import { getDataStatus } from "@/features/seasons/seasons-service";
 import { Card } from "@/shared/components/Card";
 import { Countdown } from "@/shared/components/Countdown";
+import { DataStalenessBanner } from "@/shared/components/DataStalenessBanner";
 import { ErrorBanner } from "@/shared/components/ErrorBanner";
 import { LiveFooter } from "@/shared/components/LiveFooter";
 import { TableSkeleton } from "@/shared/components/Skeleton";
@@ -18,6 +20,9 @@ interface NextRaceViewProps {
 export function NextRaceView({ year }: NextRaceViewProps) {
   const fetcher = useCallback(() => getNextRacePreview(year), [year]);
   const { data, error, loading, refreshing, lastUpdated, refresh } = useLiveData(fetcher, [year]);
+
+  const statusFetcher = useCallback(() => getDataStatus(year), [year]);
+  const { data: dataStatus } = useLiveData(statusFetcher, [year]);
 
   if (loading) {
     return (
@@ -64,6 +69,8 @@ export function NextRaceView({ year }: NextRaceViewProps) {
 
   return (
     <div className="space-y-4">
+      <DataStalenessBanner status={dataStatus} />
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold">{data.meetingName}</h1>

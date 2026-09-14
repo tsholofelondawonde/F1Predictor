@@ -390,6 +390,7 @@ appsettings.*.local.json
 # Local planning and prompt files
 DOTNET_2026_STANDARDS_PROMPT.md
 OTEL_ASPIRE_MIGRATION_PROMPT.md
+/docs/
 
 /graphify-out
 
@@ -409,3 +410,5 @@ OTEL_ASPIRE_MIGRATION_PROMPT.md
 # build time; only the ones under F1Predictor.WebApi/models/ are intentionally tracked.
 *.zip
 !F1Predictor.WebApi/models/*.zip
+
+/docs

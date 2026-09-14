@@ -18,6 +18,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Verify trained models are present
+        run: |
+          for f in F1Predictor.WebApi/models/podium-model.zip F1Predictor.WebApi/models/points-model.zip; do
+            if [ ! -s "$f" ]; then
+              echo "::error::Missing or empty $f — the Dockerfile bakes this into the production image; commit the trained model before merging." >&2
+              exit 1
+            fi
+          done
+
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
         with:

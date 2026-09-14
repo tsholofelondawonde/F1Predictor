@@ -54,3 +54,11 @@ export interface RebuildFeaturesResponse {
   racesSkipped: number;
   featureRows: number;
 }
+
+export interface DataStatus {
+  isStale: boolean;
+  pendingRaceName: string | null;
+  pendingRaceDate: string | null;
+  featuresStale: boolean;
+  modelsAvailable: boolean;
+}

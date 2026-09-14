@@ -21,6 +21,9 @@ export function MarketingNav() {
           <a href="#how-it-works" className="transition-colors hover:text-(--color-foreground)">
             How it works
           </a>
+          <Link href="/roadmap" className="transition-colors hover:text-(--color-foreground)">
+            Roadmap
+          </Link>
         </nav>
 
         <Link href="/dashboard" className={buttonClasses("primary")}>

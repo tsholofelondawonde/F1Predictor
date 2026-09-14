@@ -4,8 +4,10 @@ import { useCallback, useState } from "react";
 import { getChampionshipForecast } from "@/features/championship/championship-service";
 import { DriverStandingsTable } from "@/features/championship/components/DriverStandingsTable";
 import { ConstructorStandingsTable } from "@/features/championship/components/ConstructorStandingsTable";
+import { getDataStatus } from "@/features/seasons/seasons-service";
 import { LiveFooter } from "@/shared/components/LiveFooter";
 import { Card } from "@/shared/components/Card";
+import { DataStalenessBanner } from "@/shared/components/DataStalenessBanner";
 import { ErrorBanner } from "@/shared/components/ErrorBanner";
 import { TableSkeleton } from "@/shared/components/Skeleton";
 import { getErrorDisplay } from "@/shared/lib/error-display";
@@ -22,6 +24,9 @@ export function ChampionshipView({ year }: ChampionshipViewProps) {
 
   const fetcher = useCallback(() => getChampionshipForecast(year), [year]);
   const { data, error, loading, refreshing, lastUpdated, refresh } = useLiveData(fetcher, [year]);
+
+  const statusFetcher = useCallback(() => getDataStatus(year), [year]);
+  const { data: dataStatus } = useLiveData(statusFetcher, [year]);
 
   if (loading) {
     return (
@@ -61,6 +66,8 @@ export function ChampionshipView({ year }: ChampionshipViewProps) {
 
   return (
     <div className="space-y-4">
+      <DataStalenessBanner status={dataStatus} />
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold">{data.year} Championship</h1>

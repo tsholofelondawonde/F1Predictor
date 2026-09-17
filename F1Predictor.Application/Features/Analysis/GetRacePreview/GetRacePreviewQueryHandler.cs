@@ -17,19 +17,34 @@ internal sealed class GetRacePreviewQueryHandler(IApplicationDbContext context) 
         var narrative = await context.RacePreviewNarratives.AsNoTracking().FirstOrDefaultAsync(n => n.SessionKey == query.SessionKey, cancellationToken);
         if (narrative is null) return Result.Failure<RacePreviewResponse>(AnalysisErrors.PreviewNotFound(query.SessionKey));
 
-        var meetingName = await (from session in context.RaceSessions
-                                 join meeting in context.Meetings on session.MeetingKey equals meeting.MeetingKey
-                                 where session.SessionKey == query.SessionKey
-                                 select meeting.MeetingName).FirstOrDefaultAsync(cancellationToken) ?? "Unknown meeting";
+        var race = await (from session in context.RaceSessions
+                          join meeting in context.Meetings on session.MeetingKey equals meeting.MeetingKey
+                          where session.SessionKey == query.SessionKey
+                          select new { meeting.MeetingName, meeting.Year }).FirstOrDefaultAsync(cancellationToken);
 
         var gridNowPublished = !narrative.GridConfirmed
             && await context.StartingGridEntries.AnyAsync(g => g.SessionKey == query.SessionKey, cancellationToken);
 
-        var latestClassified = await context.RaceSessions.Where(s => s.IsClassified).MaxAsync(s => (int?)s.SessionKey, cancellationToken);
-        var resultsMovedOn = narrative.BasedOnLatestClassifiedSessionKey is { } basedOn && latestClassified > basedOn;
+        // BasedOnLatestClassifiedSessionKey was set from SeasonChampionship.LatestClassifiedSessionKey,
+        // which only looks at the previewed race's own season, so this comparison must be scoped the
+        // same way — otherwise a classified race in a different season would falsely flag every
+        // preview stale.
+        int? latestClassified = null;
+        if (race is not null)
+        {
+            latestClassified = await (from session in context.RaceSessions
+                                      join meeting in context.Meetings on session.MeetingKey equals meeting.MeetingKey
+                                      where meeting.Year == race.Year && session.IsClassified
+                                      select (int?)session.SessionKey).MaxAsync(cancellationToken);
+        }
+
+        // A null BasedOnLatestClassifiedSessionKey means the preview was written before any race in
+        // the season was classified; the first classified result then makes it stale too.
+        var resultsMovedOn = latestClassified is { } latest
+            && (narrative.BasedOnLatestClassifiedSessionKey is null || latest > narrative.BasedOnLatestClassifiedSessionKey);
 
         return Result.Success(new RacePreviewResponse(
-            narrative.SessionKey, meetingName, narrative.GridConfirmed, narrative.Model, narrative.GeneratedAt,
+            narrative.SessionKey, race?.MeetingName ?? "Unknown meeting", narrative.GridConfirmed, narrative.Model, narrative.GeneratedAt,
             narrative.Headline, narrative.Content, Stale: gridNowPublished || resultsMovedOn));
     }
 }

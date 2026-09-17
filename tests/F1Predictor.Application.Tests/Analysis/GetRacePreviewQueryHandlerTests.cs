@@ -98,4 +98,51 @@ public sealed class GetRacePreviewQueryHandlerTests
         result.IsSuccess.Should().BeTrue();
         result.Value.Stale.Should().BeTrue();
     }
+
+    [Fact]
+    public async Task Handle_ClassifiedRaceInAnotherSeason_IsNotStale()
+    {
+        using var db = InMemoryDb.Create();
+        await SeasonSeed.SeedNextRaceAsync(db, withGrid: true);
+        await SeasonSeed.SeedOtherSeasonClassifiedRaceAsync(db, year: 2025, sessionKey: 900);
+        db.RacePreviewNarratives.Add(new RacePreviewNarrative
+        {
+            SessionKey = 20,
+            GridConfirmed = true,
+            BasedOnLatestClassifiedSessionKey = 10,
+            Model = "fake-model",
+            GeneratedAt = DateTimeOffset.UtcNow,
+            Headline = "Headline",
+            Content = "Content"
+        });
+        await db.SaveChangesAsync();
+
+        var result = await new GetRacePreviewQueryHandler(db).Handle(new GetRacePreviewQuery(20), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Stale.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Handle_GeneratedBeforeAnyResult_BecomesStaleOnceARaceIsClassified()
+    {
+        using var db = InMemoryDb.Create();
+        await SeasonSeed.SeedNextRaceAsync(db, withGrid: true);
+        db.RacePreviewNarratives.Add(new RacePreviewNarrative
+        {
+            SessionKey = 20,
+            GridConfirmed = true,
+            BasedOnLatestClassifiedSessionKey = null,
+            Model = "fake-model",
+            GeneratedAt = DateTimeOffset.UtcNow,
+            Headline = "Headline",
+            Content = "Content"
+        });
+        await db.SaveChangesAsync();
+
+        var result = await new GetRacePreviewQueryHandler(db).Handle(new GetRacePreviewQuery(20), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Stale.Should().BeTrue();
+    }
 }

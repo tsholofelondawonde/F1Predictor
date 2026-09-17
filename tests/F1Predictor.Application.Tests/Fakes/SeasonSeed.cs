@@ -30,4 +30,17 @@ internal static class SeasonSeed
 
         await db.SaveChangesAsync();
     }
+
+    /// <summary>
+    /// Adds a classified race in a different season, with a session key higher than any of
+    /// <see cref="SeedNextRaceAsync"/>'s — so a staleness check that forgets to scope by year
+    /// would wrongly treat it as the latest classified session.
+    /// </summary>
+    public static async Task SeedOtherSeasonClassifiedRaceAsync(ApplicationDbContext db, int year, int sessionKey)
+    {
+        db.Meetings.Add(new Meeting { MeetingKey = sessionKey, Year = year, MeetingName = "Other Season GP", CircuitShortName = "Z", CountryName = "Z", DateStart = DateTimeOffset.UtcNow.AddDays(-30) });
+        db.RaceSessions.Add(new RaceSession { SessionKey = sessionKey, MeetingKey = sessionKey, SessionName = "Race", SessionType = "Race", DateStart = DateTimeOffset.UtcNow.AddDays(-30), IsClassified = true });
+
+        await db.SaveChangesAsync();
+    }
 }

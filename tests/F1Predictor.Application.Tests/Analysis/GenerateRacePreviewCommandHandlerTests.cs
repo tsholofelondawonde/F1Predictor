@@ -12,7 +12,7 @@ namespace F1Predictor.Application.Tests.Analysis;
 
 public sealed class GenerateRacePreviewCommandHandlerTests
 {
-    private static readonly DateTime FixedUtcNow = DateTime.SpecifyKind(new DateTime(2026, 9, 17, 10, 0, 0), DateTimeKind.Utc);
+    private static readonly DateTime FixedUtcNow = new(2026, 9, 17, 10, 0, 0, DateTimeKind.Utc);
 
     private static GenerateRacePreviewCommandHandler Handler(ApplicationDbContext db, FakeChatClient chat, bool aiAvailable, bool modelsAvailable = true) =>
         new(db, new FakeRacePredictor { ModelsAvailable = modelsAvailable }, new FakeAiCapabilities(aiAvailable), chat,

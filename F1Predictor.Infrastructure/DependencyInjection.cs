@@ -1,7 +1,9 @@
+using F1Predictor.Application.Abstractions.AI;
 using F1Predictor.Application.Abstractions.Data;
 using F1Predictor.Application.Abstractions.Legacy;
 using F1Predictor.Application.Abstractions.MachineLearning;
 using F1Predictor.Application.Abstractions.OpenF1;
+using F1Predictor.Infrastructure.AI;
 using F1Predictor.Infrastructure.Database;
 using F1Predictor.Infrastructure.DomainEvents;
 using F1Predictor.Infrastructure.Ingestion;
@@ -11,9 +13,12 @@ using F1Predictor.Infrastructure.OpenF1;
 using F1Predictor.Infrastructure.Time;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
+using OllamaSharp;
 using Quartz;
 using SharedKernel;
 
@@ -39,6 +44,7 @@ public static class DependencyInjection
             .AddOpenF1(configuration)
             .AddMachineLearning(configuration)
             .AddIngestionScheduler(configuration)
+            .AddAi(configuration)
             .AddHealthChecks(configuration);
      
     /// <summary>
@@ -135,6 +141,53 @@ public static class DependencyInjection
                 .StartNow());
         });
         services.AddQuartzHostedService(quartz => quartz.WaitForJobsToComplete = true);
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers the chat client behind <c>IChatClient</c>. With <c>Ai:Provider=None</c> (the
+    /// default, and production) an <see cref="UnavailableChatClient"/> is registered so nothing
+    /// fails to resolve; handlers consult <see cref="IAiCapabilities"/> before calling it.
+    /// </summary>
+    internal static IServiceCollection AddAi(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<AiOptions>(configuration.GetSection(AiOptions.SectionName));
+        services.AddSingleton<IAiCapabilities, AiCapabilities>();
+
+        var options = configuration.GetSection(AiOptions.SectionName).Get<AiOptions>() ?? new AiOptions();
+
+        services.AddHttpClient(OllamaHealthCheck.HttpClientName, client =>
+        {
+            client.BaseAddress = new Uri(options.Ollama.Endpoint);
+            client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+        });
+
+        services.AddChatClient(sp => options.Provider switch
+            {
+                AiProvider.Ollama => new OllamaApiClient(
+                    sp.GetRequiredService<IHttpClientFactory>().CreateClient(OllamaHealthCheck.HttpClientName),
+                    options.Ollama.Model),
+                AiProvider.OpenAi => throw new InvalidOperationException(
+                    "Ai:Provider=OpenAi is not implemented yet (stage 4). Use None or Ollama."),
+                _ => new UnavailableChatClient()
+            })
+            // Outermost first: every call gets the configured sampling defaults, then tool
+            // invocation loops inside the logged/traced boundary.
+            .ConfigureOptions(chat =>
+            {
+                chat.Temperature ??= options.Temperature;
+                chat.AdditionalProperties ??= [];
+                chat.AdditionalProperties.TryAdd("num_ctx", options.Ollama.ContextLength);
+            })
+            .UseFunctionInvocation(configure: invoker => invoker.MaximumIterationsPerRequest = options.MaxToolIterations)
+            .UseLogging()
+            .UseOpenTelemetry();
+
+        if (options.Provider == AiProvider.Ollama)
+        {
+            services.AddHealthChecks().AddCheck<OllamaHealthCheck>("ai", failureStatus: HealthStatus.Degraded, tags: ["ai"]);
+        }
 
         return services;
     }

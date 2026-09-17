@@ -31,6 +31,7 @@ public static class ObservabilityExtensions
                 .AddHttpClientInstrumentation())
             .WithTracing(tracing => tracing
                 .AddSource(env.ApplicationName)
+                .AddSource("Experimental.Microsoft.Extensions.AI")
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation());
 

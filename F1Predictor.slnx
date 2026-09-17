@@ -17,5 +17,8 @@
   <Folder Name="/src/SharedKernel/">
     <Project Path="SharedKernel/SharedKernel.csproj" Id="6d98cfb3-0ec2-4d45-b176-9bedf3a3c5c4" />
   </Folder>
-  <Folder Name="/tests/" />
+  <Folder Name="/tests/">
+    <Project Path="tests/F1Predictor.Application.Tests/F1Predictor.Application.Tests.csproj" />
+    <Project Path="tests/F1Predictor.Infrastructure.Tests/F1Predictor.Infrastructure.Tests.csproj" />
+  </Folder>
 </Solution>

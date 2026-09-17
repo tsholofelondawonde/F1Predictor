@@ -20,4 +20,9 @@
     <ProjectReference Include="..\SharedKernel\SharedKernel.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="F1Predictor.Application.Tests" />
+    <InternalsVisibleTo Include="F1Predictor.Infrastructure.Tests" />
+  </ItemGroup>
+
 </Project>

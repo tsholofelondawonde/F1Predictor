@@ -54,8 +54,10 @@ internal sealed class TrainModelsCommandHandler(
         var points = trainer.Train(trainingFeatures, PredictionTarget.PointsFinish);
 
         logger.LogInformation(
-            "Podium model AUC {PodiumAuc:F3} / F1 {PodiumF1:F3}; points model AUC {PointsAuc:F3} / F1 {PointsF1:F3}.",
-            podium.AreaUnderRocCurve, podium.F1Score, points.AreaUnderRocCurve, points.F1Score);
+            "Podium model: {PodiumTrainer}, AUC {PodiumAuc:F3} / F1 {PodiumF1:F3}; " +
+            "points model: {PointsTrainer}, AUC {PointsAuc:F3} / F1 {PointsF1:F3}.",
+            podium.TrainerName, podium.AreaUnderRocCurve, podium.F1Score,
+            points.TrainerName, points.AreaUnderRocCurve, points.F1Score);
 
         var response = new TrainModelsResponse(
             command.Year,

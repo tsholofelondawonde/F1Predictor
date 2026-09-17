@@ -17,6 +17,7 @@
     <PackageReference Include="Microsoft.Extensions.Http" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
     <PackageReference Include="Microsoft.ML" />
+    <PackageReference Include="Microsoft.ML.AutoML" />
     <PackageReference Include="Microsoft.Extensions.ML" />
     <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" />

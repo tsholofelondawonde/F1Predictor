@@ -21,16 +21,6 @@ internal sealed class RaceFeatureInput
     [ColumnName("Label")]
     public bool Label { get; set; }
 
-    /// <summary>The five columns concatenated into the "Features" vector, in pipeline order.</summary>
-    public static string[] FeatureColumns { get; } =
-    [
-        nameof(GridPosition),
-        nameof(QualiGapToPole),
-        nameof(PitStopCount),
-        nameof(AvgPitStopDuration),
-        nameof(Rainfall)
-    ];
-
     public static RaceFeatureInput From(DriverRaceFeature feature, bool label = false) => new()
     {
         GridPosition = feature.GridPosition,

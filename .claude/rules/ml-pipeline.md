@@ -74,20 +74,29 @@ count, this filter is the first thing to check.
 Two independent binary classifiers over the same five features, differing only in label:
 
 ```
-Concatenate("Features", GridPosition, QualiGapToPole, PitStopCount, AvgPitStopDuration, Rainfall)
-  -> NormalizeMinMax("Features")
-  -> SdcaLogisticRegression(labelColumnName: "Label")
+mlContext.Auto()
+  .CreateBinaryClassificationExperiment(MaxExperimentTimeInSeconds: 30, OptimizingMetric: F1Score)
+  .Execute(trainSet, labelColumnName: "Label")
 ```
 
-80/20 split, seed 42 for reproducibility. Models are saved to the directory configured at
+AutoML searches over SDCA, LBFGS, LightGBM, FastTree, and FastForest, building its own
+featurization (concatenation, missing-value handling, calibration) internally — there is no
+longer a hand-built `Concatenate`/`NormalizeMinMax` step. `ModelTrainingResult.TrainerName`
+records which trainer the search picked for each target; the two classifiers may land on
+different trainers since they are fit independently.
+
+80/20 split, seed 42, unchanged. Models are saved to the directory configured at
 `MachineLearning:ModelDirectory` (default `models/`).
+
+**Reproducibility is best-effort, not guaranteed**, unlike the rest of this codebase's stricter
+determinism stance (see the Championship Forecasting section's `DeterministicRandom`). ML.NET's
+AutoML only exposes a wall-clock time budget, not a trial-count knob, so re-running training is
+not guaranteed to reach the same trainer or metrics bit-for-bit — this is an accepted trade-off
+for search quality within a bounded time, not an oversight.
 
 **Read AUC and F1, never accuracy.** Podium is ~15% of rows, so "always predict no" scores
 ~85% accuracy while being useless. `TrainModelsResponse` carries this warning in the payload
 itself for that reason. AUC near 0.5 is noise; grid position alone should clear 0.65.
-
-Not AutoML: ML.NET's AutoML API is still preview, and a working baseline should not depend
-on a shifting surface. Swapping it in later means replacing pipeline construction only.
 
 ## Next-Race Preview
 

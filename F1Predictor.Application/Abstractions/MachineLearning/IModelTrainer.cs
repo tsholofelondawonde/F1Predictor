@@ -26,9 +26,14 @@ public interface IModelTrainer
 /// <param name="F1Score">F1 on the test split, for the same minority-class reason.</param>
 /// <param name="TrainingRowCount">Rows the model was fitted on, before the test split.</param>
 /// <param name="ModelPath">Absolute path of the saved model file.</param>
+/// <param name="TrainerName">
+/// The AutoML-selected trainer (e.g. "LightGbmBinary", "SdcaLogisticRegressionBinary") — the
+/// two targets are trained independently and may land on different trainers.
+/// </param>
 public sealed record ModelTrainingResult(
     PredictionTarget Target,
     double AreaUnderRocCurve,
     double F1Score,
     int TrainingRowCount,
-    string ModelPath);
+    string ModelPath,
+    string TrainerName);

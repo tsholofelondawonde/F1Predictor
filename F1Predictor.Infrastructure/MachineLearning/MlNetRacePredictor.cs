@@ -52,6 +52,21 @@ internal sealed class MlNetRacePredictor(IOptions<ModelStorageOptions> options) 
         }
     }
 
+    public RaceExplanation Explain(DriverRaceFeature feature)
+    {
+        ArgumentNullException.ThrowIfNull(feature);
+
+        lock (_gate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+
+            _podium = EnsureCurrent(_podium, PredictionTarget.Podium);
+            _points = EnsureCurrent(_points, PredictionTarget.PointsFinish);
+
+            return new RaceExplanation(_podium.Explainer.Explain(feature), _points.Explainer.Explain(feature));
+        }
+    }
+
     /// <summary>
     /// Returns the cached model, reloading it if training has written a newer file since.
     /// </summary>
@@ -73,11 +88,23 @@ internal sealed class MlNetRacePredictor(IOptions<ModelStorageOptions> options) 
         }
 
         cached?.Engine.Dispose();
+        cached?.Explainer.Dispose();
 
         var transformer = _mlContext.Model.Load(path, out _);
         var engine = _mlContext.Model.CreatePredictionEngine<RaceFeatureInput, RacePredictionOutput>(transformer);
+        ModelExplainer? explainer = ModelExplainer.For(_mlContext, transformer);
 
-        return new LoadedModel(engine, writtenAt);
+        try
+        {
+            var loaded = new LoadedModel(engine, explainer, writtenAt);
+            explainer = null;
+
+            return loaded;
+        }
+        finally
+        {
+            explainer?.Dispose();
+        }
     }
 
     public void Dispose()
@@ -90,12 +117,15 @@ internal sealed class MlNetRacePredictor(IOptions<ModelStorageOptions> options) 
             }
 
             _podium?.Engine.Dispose();
+            _podium?.Explainer.Dispose();
             _points?.Engine.Dispose();
+            _points?.Explainer.Dispose();
             _disposed = true;
         }
     }
 
     private sealed record LoadedModel(
         PredictionEngine<RaceFeatureInput, RacePredictionOutput> Engine,
+        ModelExplainer Explainer,
         DateTime WrittenAt);
 }

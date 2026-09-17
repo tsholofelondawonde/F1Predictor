@@ -157,9 +157,23 @@ public static class DependencyInjection
 
         var options = configuration.GetSection(AiOptions.SectionName).Get<AiOptions>() ?? new AiOptions();
 
+        // Fail at startup, not at first IChatClient resolution: outside Development nothing may
+        // resolve IChatClient at boot, so a lazy throw would let a misconfigured app start clean
+        // and only break on first use.
+        if (options.Provider == AiProvider.OpenAi)
+        {
+            throw new InvalidOperationException(
+                "Ai:Provider=OpenAi is not implemented yet (stage 4). Use None or Ollama.");
+        }
+
         services.AddHttpClient(OllamaHealthCheck.HttpClientName, client =>
         {
-            client.BaseAddress = new Uri(options.Ollama.Endpoint);
+            // S1075 false-positives on the trailing-slash literal: without it, Uri's RFC 3986
+            // merge drops the last path segment of a configured endpoint (e.g. "/ollama") when
+            // combining with a relative request, silently breaking any non-root endpoint.
+#pragma warning disable S1075 // "/" here is a URI path-segment separator, not a hardcoded path.
+            client.BaseAddress = new Uri(options.Ollama.Endpoint.TrimEnd('/') + "/");
+#pragma warning restore S1075
             client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
         });
 
@@ -168,8 +182,6 @@ public static class DependencyInjection
                 AiProvider.Ollama => new OllamaApiClient(
                     sp.GetRequiredService<IHttpClientFactory>().CreateClient(OllamaHealthCheck.HttpClientName),
                     options.Ollama.Model),
-                AiProvider.OpenAi => throw new InvalidOperationException(
-                    "Ai:Provider=OpenAi is not implemented yet (stage 4). Use None or Ollama."),
                 _ => new UnavailableChatClient()
             })
             // Outermost first: every call gets the configured sampling defaults, then tool

@@ -22,7 +22,7 @@ public sealed class AiRegistrationTests
     }
 
     [Fact]
-    public void AddAi_NoProviderConfigured_ChatUnavailableAndClientThrows()
+    public async Task AddAi_NoProviderConfigured_ChatUnavailableAndClientThrows()
     {
         using var provider = Build();
 
@@ -34,8 +34,19 @@ public sealed class AiRegistrationTests
         capabilities.Model.Should().BeNull();
         capabilities.EmbeddingsAvailable.Should().BeFalse();
 
-        var act = () => client.GetResponseAsync("hi");
-        act.Should().ThrowAsync<InvalidOperationException>();
+        // Awaited directly (rather than via a stored Func<Task> delegate) so CA2025/MA0134 can
+        // verify the task completes, inside this using scope, before 'provider' is disposed.
+        InvalidOperationException? thrown = null;
+        try
+        {
+            await client.GetResponseAsync("hi");
+        }
+        catch (InvalidOperationException ex)
+        {
+            thrown = ex;
+        }
+
+        thrown.Should().NotBeNull();
     }
 
     [Fact]
@@ -56,8 +67,20 @@ public sealed class AiRegistrationTests
     [Fact]
     public void AddAi_OpenAiConfigured_FailsFastUntilStage4()
     {
-        var act = () => Build(new KeyValuePair<string, string?>("Ai:Provider", "OpenAi")).GetRequiredService<IChatClient>();
+        var act = () => Build(new KeyValuePair<string, string?>("Ai:Provider", "OpenAi"));
 
         act.Should().Throw<InvalidOperationException>().WithMessage("*OpenAi*not implemented*");
+    }
+
+    [Fact]
+    public void AddAi_OllamaConfigured_NormalisesEndpointTrailingSlash()
+    {
+        using var provider = Build(
+            new("Ai:Provider", "Ollama"),
+            new("Ai:Ollama:Endpoint", "http://host/ollama"));
+
+        var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient(OllamaHealthCheck.HttpClientName);
+
+        client.BaseAddress.Should().Be(new Uri("http://host/ollama/"));
     }
 }

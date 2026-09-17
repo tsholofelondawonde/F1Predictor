@@ -17,6 +17,7 @@ internal sealed class FakeChatClient : IChatClient
 
     public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         Calls.Add([.. messages]);
         Options.Add(options);
         if (Throws is not null)

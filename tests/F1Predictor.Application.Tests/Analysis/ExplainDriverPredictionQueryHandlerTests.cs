@@ -70,6 +70,20 @@ public sealed class ExplainDriverPredictionQueryHandlerTests
     }
 
     [Fact]
+    public async Task Handle_RequestCancelled_PropagatesCancellation()
+    {
+        using var db = InMemoryDb.Create();
+        await SeasonSeed.SeedNextRaceAsync(db, withGrid: false);
+        var chat = new FakeChatClient();
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        var act = () => Handler(db, chat, aiAvailable: true).Handle(new(2026, 1), cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
     public async Task Handle_DriverNotEntered_ReturnsNotFound()
     {
         using var db = InMemoryDb.Create();

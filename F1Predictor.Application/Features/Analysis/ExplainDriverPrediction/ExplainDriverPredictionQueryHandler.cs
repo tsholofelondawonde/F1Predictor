@@ -104,7 +104,8 @@ internal sealed class ExplainDriverPredictionQueryHandler(
 
             return string.IsNullOrWhiteSpace(text) ? null : text;
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException
+            && !cancellationToken.IsCancellationRequested)
         {
             logger.LogWarning(ex, "Narrative generation failed for car {DriverNumber}; returning the structured explanation only.", entry.DriverNumber);
             return null;

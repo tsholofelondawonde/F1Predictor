@@ -380,6 +380,9 @@ appsettings.*.local.json
 .env.*
 !.env.example
 
+# Neon CLI local link/config
+.neon
+
 # .NET User Secrets
 **/secrets.json
 

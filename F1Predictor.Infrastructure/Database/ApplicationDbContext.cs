@@ -1,4 +1,5 @@
 using F1Predictor.Application.Abstractions.Data;
+using F1Predictor.Domain.Analysis.Entities;
 using F1Predictor.Domain.Predictions;
 using F1Predictor.Domain.RaceData.Entities;
 using F1Predictor.Infrastructure.DomainEvents;
@@ -20,6 +21,7 @@ public class ApplicationDbContext(
     public DbSet<WeatherReading> WeatherReadings { get; set; } = null!;
     public DbSet<DriverEntry> DriverEntries { get; set; } = null!;
     public DbSet<DriverRaceFeature> DriverRaceFeatures { get; set; } = null!;
+    public DbSet<RacePreviewNarrative> RacePreviewNarratives { get; set; } = null!;
 
     public Task AcquireSessionAdvisoryLockAsync(int sessionKey, CancellationToken cancellationToken) =>
         Database.ExecuteSqlInterpolatedAsync(

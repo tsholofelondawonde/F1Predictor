@@ -1,3 +1,4 @@
+using F1Predictor.Domain.Analysis.Entities;
 using F1Predictor.Domain.Predictions;
 using F1Predictor.Domain.RaceData.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +20,9 @@ public interface IApplicationDbContext
 
     /// <summary>Model-ready rows derived from the raw tables above.</summary>
     public DbSet<DriverRaceFeature> DriverRaceFeatures { get; set; }
+
+    /// <summary>Generated previews, one per race session — see <c>Features/Analysis</c>.</summary>
+    public DbSet<RacePreviewNarrative> RacePreviewNarratives { get; set; }
 
     /// <summary>
     /// Provides access to the change tracker for managing entity state.

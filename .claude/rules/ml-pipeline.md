@@ -189,8 +189,10 @@ explanation method every trainer in the search space actually supports.
   is a real ML.NET limitation, not a shortcut.
 - A narrative sentence on top of the contribution table is optional: it only appears when an AI
   provider is configured (see "AI analyst" below), and is cached for 10 minutes via
-  `CachedNarrative` (`Microsoft.Extensions.Caching.Hybrid`) so the same driver/session/model
-  combination doesn't re-prompt the LLM on every page view.
+  `CachedNarrative` (`Microsoft.Extensions.Caching.Hybrid`), keyed on
+  `explain:{sessionKey}:{driverNumber}:{gridConfirmed}:{model}` so the same driver, the same
+  race, the same grid state (projected vs. confirmed) and the same chat model don't re-prompt
+  the LLM on every page view — but a grid that flips from projected to confirmed does.
 
 ## AI analyst
 

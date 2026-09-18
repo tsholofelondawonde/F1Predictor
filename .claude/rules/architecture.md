@@ -18,7 +18,7 @@ prediction" and "AI analyst" sections.
 This started as a flat console walking skeleton and has since been ported onto the layered
 scaffold produced by [CleanArchitectureGenerator](https://www.nuget.org/packages/CleanArchitectureGenerator)
 (`cleanarch new F1Predictor -d postgres --aspire`). The pipeline itself is unchanged — the
-same features, the same SDCA classifiers, the same holdout check — but each part now lives
+same features, the same AutoML-trained classifiers, the same holdout check — but each part now lives
 in the layer that owns it, and the console's `Console.WriteLine` reporting has become
 `Result<T>`-returning use cases behind HTTP endpoints.
 
@@ -60,14 +60,17 @@ F1Predictor/
 ├── F1Predictor.Application/
 │   ├── Abstractions/               IOpenF1Client, IModelTrainer, IRacePredictor,
 │   │                               IApplicationDbContext, ILegacyDatabaseImporter,
-│   │                               IChatClient, IAiCapabilities
+│   │                               IAiCapabilities (Abstractions/AI/); IChatClient itself
+│   │                               comes from the Microsoft.Extensions.AI.Abstractions package
 │   └── Features/                   Use cases, one folder per command/query
 │       └── Analysis/               Explanation, race preview and analyst-chat use cases
 ├── F1Predictor.Infrastructure/
 │   ├── Database/                   ApplicationDbContext, configurations, migrations
 │   ├── OpenF1/                     Typed HTTP client + politeness delay handler
 │   ├── MachineLearning/            ML.NET trainer, predictor and feature-contribution explainer
-│   ├── AI/                         AiOptions, the Ollama IChatClient registration, AiCapabilities
+│   ├── AI/                         AiOptions, AiProvider, AiCapabilities, OllamaHealthCheck,
+│   │                               UnavailableChatClient (the Ollama IChatClient itself is
+│   │                               registered by AddAi in DependencyInjection.cs)
 │   └── Legacy/                     One-off SQLite → Postgres import
 ├── F1Predictor.WebApi/Endpoints/   One sealed class per endpoint, incl. Analysis/
 ├── F1Predictor.Web/                Next.js frontend (not in the .slnx — AppHost runs it)
@@ -87,7 +90,8 @@ generated `PageProps<"/route">` helper.
 
 Dependencies point inward only. Domain references nothing but `SharedKernel`; Application
 defines the ports; Infrastructure implements them; WebApi composes. Application depends on
-`IChatClient` (Abstractions) and `IAiCapabilities`; Infrastructure picks the provider.
+`IChatClient` (from the `Microsoft.Extensions.AI.Abstractions` package, not a file in this repo)
+and on its own `IAiCapabilities` port; Infrastructure picks the provider.
 
 ## Architecture
 

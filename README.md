@@ -21,7 +21,8 @@ title odds.
   model output but never predicts: per-feature explanations of a driver's prediction, a
   generated next-race preview, and a tool-calling analyst chat over SSE. Needs a local
   [Ollama](https://ollama.com) daemon (`Ai:Provider=Ollama`); with no provider configured the
-  API still serves plain predictions and the frontend hides the AI surface entirely.
+  API still serves plain predictions and the frontend hides the Analyst tab and the
+  generation controls (the preview card and per-driver contributions still render).
 - A **Next.js 16** front end (branded *GridMind*) over a minimal API.
 
 > **Naming:** the solution, namespaces and this repository are **F1Predictor**; the
@@ -41,14 +42,17 @@ F1Predictor/
 ├── F1Predictor.Domain/
 │   ├── RaceData/                 Meeting, RaceSession, grid / result / pit / weather entities
 │   ├── Predictions/              DriverRaceFeature + the feature engineering rules
-│   └── Championship/             Points scale, standings + count-back, Plackett–Luce fit,
-│                                 Monte Carlo simulator, title scenarios
+│   ├── Championship/             Points scale, standings + count-back, Plackett–Luce fit,
+│   │                             Monte Carlo simulator, title scenarios
+│   └── Analysis/                 RacePreviewNarrative (the persisted AI preview row)
 ├── F1Predictor.Application/      Use cases (one folder per command/query), port interfaces
-├── F1Predictor.Infrastructure/   EF Core + Npgsql, OpenF1 HTTP client, ML.NET trainer/predictor
+├── F1Predictor.Infrastructure/   EF Core + Npgsql, OpenF1 HTTP client, ML.NET trainer/predictor,
+│                                 AI/ (AiOptions, AiCapabilities, Ollama health check)
 ├── F1Predictor.WebApi/           One sealed class per endpoint, discovered by assembly scan
 ├── F1Predictor.Web/              Next.js front end (run by the AppHost, not in the .slnx)
 ├── F1Predictor.AppHost/          .NET Aspire orchestration
-└── F1Predictor.ServiceDefaults/  Aspire telemetry / health defaults
+├── F1Predictor.ServiceDefaults/  Aspire telemetry / health defaults
+└── tests/                        F1Predictor.Application.Tests, F1Predictor.Infrastructure.Tests
 ```
 
 | Concern | Choice |

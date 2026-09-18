@@ -4,16 +4,20 @@
 
 Two test projects live under `/tests/`: `F1Predictor.Application.Tests` (42 tests) and
 `F1Predictor.Infrastructure.Tests` (8 tests), both xunit 2.9.3 + FluentAssertions 8.9.0. Test
-methods are named `Method_Scenario_Expectation`. Fakes are hand-written under each project's
+methods are named `Method_Scenario_Expectation`. Fakes are hand-written in preference to Moq —
+Moq is pinned in `Directory.Packages.props` for the rare case a hand-written fake isn't worth
+it, but the AI-layer tests use none. `F1Predictor.Application.Tests` keeps its fakes under a
 `Fakes/` folder (`FakeChatClient`, `FakeRacePredictor`, `FakeAiCapabilities`, `InMemoryDb`, and
-so on) in preference to Moq — Moq is pinned in `Directory.Packages.props` for the rare case a
-hand-written fake isn't worth it, but the AI-layer tests use none. Both test projects get
-`InternalsVisibleTo` from `F1Predictor.Application` and `F1Predictor.Infrastructure`, so
-`internal` handlers, tools and prompt builders are directly testable without a public surface
-just for tests. `tests/Directory.Build.props` and `tests/.editorconfig` hold the test-only
-analyzer relaxations (naming, mocking-friendly patterns) that would otherwise fail the repo's
-`TreatWarningsAsErrors` build outside test code. CI (`.github/workflows/ci.yml`) runs
-`dotnet test F1Predictor.slnx` as part of `Build & Verify`.
+so on); `F1Predictor.Infrastructure.Tests` has no such folder — its one fake, a hand-built
+model for `ModelExplainerTests`, lives next to its test in `MachineLearning/SyntheticModels.cs`.
+Both test projects get `InternalsVisibleTo` from `F1Predictor.Application` and
+`F1Predictor.Infrastructure`, so `internal` handlers, tools and prompt builders are directly
+testable without a public surface just for tests. `tests/Directory.Build.props` turns off a
+handful of analyzers that fire on legitimate test patterns (inline arrays, culture-sensitive
+literals/comparisons, `using` disposal); `tests/.editorconfig` disables `CA1707` (test names
+read as `Method_Scenario_Expectation`, not PascalCase) and `CA1812` (xunit test classes look
+"uninstantiated" to the analyzer because the runner instantiates them via reflection). CI
+(`.github/workflows/ci.yml`) runs `dotnet test F1Predictor.slnx` as part of `Build & Verify`.
 
 ## Known Scope Cuts
 

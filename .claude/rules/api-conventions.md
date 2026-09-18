@@ -28,7 +28,8 @@ by which a new column gets backfilled or a provisional classification corrected.
 stored as *scheduled* is always re-checked, so a race is picked up automatically once it runs.
 
 `POST /api/ai/ask` sits behind its own `Analyst` rate-limit policy — 10 requests per minute per
-IP, separate from the `Mutating` policy the other `X-Api-Key` routes share — because one analyst
+IP, separate from the `Mutating` policy the rebuild/train/import/preview routes share (ingest
+has its own `Ingest` policy) — because one analyst
 question is a single LLM round trip that can itself make up to `MaxToolIterations` (6) tool calls,
 which is a heavier unit of work than a plain mutating request. It streams its answer as
 `text/event-stream` rather than a JSON body: the event vocabulary is `status` (a tool call is in

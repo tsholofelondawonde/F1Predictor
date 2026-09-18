@@ -45,7 +45,8 @@ Then from `/scalar`: ingest a season → rebuild features → train → read the
 The AI analyst, driver-explanation narratives and generated race previews are optional and need
 a local [Ollama](https://ollama.com) daemon plus `dotnet user-secrets set "Ai:Provider" "Ollama"
 --project F1Predictor.WebApi` — see `setup.md`'s "AI (optional, local only)" section. Without it
-the API and frontend both work fine; the AI surface is simply hidden.
+the API and frontend both work fine; only the Analyst tab and the generation controls hide
+(the preview card and per-driver contributions still render).
 
 More detail lives in [`.claude/rules/setup.md`](.claude/rules/setup.md).
 

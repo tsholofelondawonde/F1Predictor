@@ -8,4 +8,7 @@ internal static class RateLimiterPolicies
 
     /// <summary>3 requests per minute per IP — rebuild, train and the legacy admin import.</summary>
     public const string Mutating = "Mutating";
+
+    /// <summary>10 requests per minute per IP — one analyst question is one LLM round trip with up to six tool calls.</summary>
+    public const string Analyst = "Analyst";
 }

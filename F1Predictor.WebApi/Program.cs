@@ -39,8 +39,8 @@ builder.Services.AddCors(options => options.AddPolicy(FrontendCorsPolicy, policy
           .WithMethods("GET", "POST")
           .WithHeaders("Content-Type", "X-Api-Key")));
 
-// Only the four mutating routes that opt into these policies via .RequireRateLimiting(...)
-// are affected — every other route is unrestricted.
+// Only the mutating routes and the analyst chat that opt into these policies via
+// .RequireRateLimiting(...) are affected — every other route is unrestricted.
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -97,6 +97,11 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
             }));
+
+    options.AddPolicy(RateLimiterPolicies.Analyst, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
 });
 
 builder.Services

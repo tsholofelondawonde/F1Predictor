@@ -64,10 +64,16 @@ dotnet user-secrets set "Ai:Provider" "Ollama" --project F1Predictor.WebApi
 
 Production stays `Ai:Provider=None` — there is no Ollama daemon to reach from Azure Container
 Apps, and a hosted provider is not wired up yet (`Ai:Provider=OpenAi` is accepted by configuration
-but fails fast at startup — see `ml-pipeline.md`). Previews are generated locally, against a
-developer's own Ollama, and persisted to Postgres; production then serves the stored row
-read-only through `GET /api/races/{sessionKey}/preview` — nothing in prod needs to reach an LLM
-to display one.
+but fails fast at startup — see `ml-pipeline.md`). Production serves a stored preview read-only
+through `GET /api/races/{sessionKey}/preview` — nothing in prod needs to reach an LLM to display
+one — but a preview generated against the usual local setup never gets there:
+`ConnectionStrings:LocalDb` is the Neon development branch, not production, so the row lands in
+the wrong database. To publish a preview to production, run the local API with
+`ConnectionStrings:LocalDb` temporarily pointed at the **production** connection string (a user
+secret, never `appsettings.json`), `POST /api/races/{sessionKey}/preview` with the `X-Api-Key`
+header, then point the secret back at the development branch. Until that is done the deployed
+next-race page shows "No preview generated yet." and, with no provider configured, offers no
+button to change it.
 
 ### Rehearsing a migration on a Neon branch first
 

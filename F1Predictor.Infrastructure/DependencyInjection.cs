@@ -166,6 +166,25 @@ public static class DependencyInjection
                 "Ai:Provider=OpenAi is not implemented yet (stage 4). Use None or Ollama.");
         }
 
+        services.AddOllamaHttpClient(options);
+        services.AddChatClientPipeline(options);
+
+        if (options.Provider == AiProvider.Ollama)
+        {
+            services.AddHealthChecks().AddCheck<OllamaHealthCheck>("ai", failureStatus: HealthStatus.Degraded, tags: ["ai"]);
+        }
+
+        return services;
+    }
+
+    private static void AddOllamaHttpClient(this IServiceCollection services, AiOptions options)
+    {
+        // No resilience handler here on purpose: one generation can legitimately take a minute
+        // on an 8B model, and a retry would only start it again. Note that Program.cs currently
+        // has builder.AddServiceDefaults() commented out; if it is ever re-enabled, its global
+        // AddStandardResilienceHandler would wrap this client too, adding retries and a 30 s
+        // per-attempt timeout underneath the 120 s TimeoutSeconds below — at which point this
+        // client needs .RemoveAllResilienceHandlers() to keep behaving as it does today.
         services.AddHttpClient(OllamaHealthCheck.HttpClientName, client =>
         {
             // S1075 false-positives on the trailing-slash literal: without it, Uri's RFC 3986
@@ -176,7 +195,10 @@ public static class DependencyInjection
 #pragma warning restore S1075
             client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
         });
+    }
 
+    private static void AddChatClientPipeline(this IServiceCollection services, AiOptions options)
+    {
         services.AddChatClient(sp => options.Provider switch
             {
                 AiProvider.Ollama => new OllamaApiClient(
@@ -184,8 +206,12 @@ public static class DependencyInjection
                     options.Ollama.Model),
                 _ => new UnavailableChatClient()
             })
-            // Outermost first: every call gets the configured sampling defaults, then tool
-            // invocation loops inside the logged/traced boundary.
+            // ChatClientBuilder composes first-added-outermost, so a request runs
+            // ConfigureOptions -> FunctionInvocation -> Logging -> OpenTelemetry -> Ollama:
+            // the sampling defaults are applied once, then the tool-invocation loop sits
+            // OUTSIDE logging and tracing, so each model round-trip inside the loop is logged
+            // and spanned on its own — which is the order M.E.AI recommends, and why a
+            // three-tool question shows up as three spans rather than one.
             .ConfigureOptions(chat =>
             {
                 chat.Temperature ??= options.Temperature;
@@ -200,13 +226,6 @@ public static class DependencyInjection
             })
             .UseLogging()
             .UseOpenTelemetry();
-
-        if (options.Provider == AiProvider.Ollama)
-        {
-            services.AddHealthChecks().AddCheck<OllamaHealthCheck>("ai", failureStatus: HealthStatus.Degraded, tags: ["ai"]);
-        }
-
-        return services;
     }
 
     /// <summary>

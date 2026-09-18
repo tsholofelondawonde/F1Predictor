@@ -173,10 +173,11 @@ explanation method every trainer in the search space actually supports.
   model, means `Σ contributions + bias == score` (cross-checked in
   `tests/F1Predictor.Infrastructure.Tests`). For a tree model the contributions are per-path, not
   summands of a linear equation, but they are still signed and comparable the same way.
-- Feature slot names are read off the saved model's `Features` column schema
-  (`DataViewSchema.Column.GetSlotNames`), not hand-maintained, so they can never drift from what
-  the model was actually trained on; `RaceFeatureInput.FeatureNames` is only the fallback when a
-  model has no slot names at all.
+- Feature slot names are read off the saved model's feature column schema — the column
+  `predictor.FeatureColumnName` names, which AutoML calls `__Features__`, not a literal
+  `Features` — via `DataViewSchema.Column.GetSlotNames`, not hand-maintained, so they can never
+  drift from what the model was actually trained on; `RaceFeatureInput.FeatureNames` is only the
+  fallback when a model has no slot names at all.
 - `Direction` ("helps"/"hurts"/"neutral") is derived in the handler
   (`TargetExplanationResponse.DirectionOf`) from the sign of the contribution — the model itself
   has no notion of direction, only a signed number.

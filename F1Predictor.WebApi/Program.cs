@@ -164,7 +164,7 @@ app.UseRateLimiter();
 
 // Mapped in every environment, not just Development: the deployed container is driven from
 // Scalar, and it doubles as the deployment smoke test. Nothing here is a mutating route —
-// the four that are still sit behind the X-Api-Key middleware. SecurityHeadersMiddleware already
+// the six that are still sit behind the X-Api-Key middleware. SecurityHeadersMiddleware already
 // exempts /scalar and /openapi from its strict CSP so the page renders.
 app.MapOpenApi();
 

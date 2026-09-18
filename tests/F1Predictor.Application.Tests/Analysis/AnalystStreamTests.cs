@@ -21,6 +21,20 @@ public sealed class AnalystStreamTests
         throw new HttpRequestException("connection reset");
     }
 
+    // Throws immediately, before yielding anything. The `if` keeps the `yield break` reachable
+    // from the compiler's point of view (it isn't a compile-time constant), so this compiles as
+    // a valid iterator without an unreachable-code warning.
+    private static async IAsyncEnumerable<ChatResponseUpdate> ThrowsImmediately(Exception exception)
+    {
+        await Task.Yield();
+        if (exception is not null)
+        {
+            throw exception;
+        }
+
+        yield break;
+    }
+
     [Fact]
     public async Task Map_ToolCallThenText_EmitsStatusDeltasDone()
     {
@@ -52,5 +66,32 @@ public sealed class AnalystStreamTests
         var events = await AnalystStream.Map(Updates(result), NullLogger.Instance, CancellationToken.None).ToListAsync();
 
         events.Select(e => e.Type).Should().Equal("done");
+    }
+
+    // A provider-side HttpClient timeout surfaces as TaskCanceledException with the CALLER's
+    // token not cancelled. TaskCanceledException derives from OperationCanceledException, so an
+    // unfiltered `catch (OperationCanceledException)` ahead of the filtered catch would swallow
+    // it silently (yield break, no error, no done) — this pins that it instead ends the stream
+    // with a single error event.
+    [Fact]
+    public async Task Map_ProviderTimesOut_EndsWithErrorEvent()
+    {
+        var events = await AnalystStream.Map(ThrowsImmediately(new TaskCanceledException()), NullLogger.Instance, CancellationToken.None).ToListAsync();
+
+        events.Should().ContainSingle();
+        events[0].Type.Should().Be("error");
+    }
+
+    // Pins the other branch: when the CALLER's token is the one that was cancelled, the stream
+    // ends silently (no error, no done, no exception escapes) rather than surfacing an error.
+    [Fact]
+    public async Task Map_CallerCancelled_YieldsNothing()
+    {
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        var events = await AnalystStream.Map(ThrowsImmediately(new OperationCanceledException()), NullLogger.Instance, cts.Token).ToListAsync();
+
+        events.Should().BeEmpty();
     }
 }

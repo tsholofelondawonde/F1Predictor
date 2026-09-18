@@ -16,9 +16,10 @@ internal sealed class AskAnalystCommandValidator : AbstractValidator<AskAnalystC
             .WithErrorCode("Analyst.UnsupportedSeason").WithMessage("Only seasons from 2023 onwards can be discussed.");
 
         RuleFor(c => c.Messages)
+            .Cascade(CascadeMode.Stop)
             .NotEmpty().WithErrorCode("Analyst.NoMessages").WithMessage("Send at least one message.")
             .Must(m => m.Count <= MaxTurns).WithErrorCode("Analyst.TooManyTurns").WithMessage($"Keep the conversation to {MaxTurns} turns; start a new one.")
-            .Must(m => m.Count > 0 && string.Equals(m[^1].Role, "user", StringComparison.Ordinal))
+            .Must(m => m.Count > 0 && string.Equals(m[^1]?.Role, "user", StringComparison.Ordinal))
                 .WithErrorCode("Analyst.LastTurnNotUser").WithMessage("The last message must be from the user.");
 
         RuleForEach(c => c.Messages).ChildRules(turn =>

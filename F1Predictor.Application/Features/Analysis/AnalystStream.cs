@@ -25,7 +25,7 @@ internal static class AnalystStream
             {
                 moved = await enumerator.MoveNextAsync();
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 yield break;
             }

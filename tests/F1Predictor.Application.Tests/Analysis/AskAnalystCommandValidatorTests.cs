@@ -39,4 +39,13 @@ public sealed class AskAnalystCommandValidatorTests
     [Fact]
     public void Validate_YearBefore2023_Fails() =>
         _validator.Validate(new AskAnalystCommand(2022, [new("user", "a")])).IsValid.Should().BeFalse();
+
+    [Fact]
+    public void Validate_NullMessages_Fails()
+    {
+        var result = _validator.Validate(new AskAnalystCommand(2026, null!));
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "Messages");
+    }
 }

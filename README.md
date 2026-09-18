@@ -17,6 +17,11 @@ title odds.
   fitted from the season's finishing orders, played out over the remaining calendar 10,000
   times, plus an arithmetic "who's mathematically alive / what the leader needs to clinch"
   analyser.
+- **AI analysis, optional and additive** — an `IChatClient` beside the ML layer that narrates
+  model output but never predicts: per-feature explanations of a driver's prediction, a
+  generated next-race preview, and a tool-calling analyst chat over SSE. Needs a local
+  [Ollama](https://ollama.com) daemon (`Ai:Provider=Ollama`); with no provider configured the
+  API still serves plain predictions and the frontend hides the AI surface entirely.
 - A **Next.js 16** front end (branded *GridMind*) over a minimal API.
 
 > **Naming:** the solution, namespaces and this repository are **F1Predictor**; the
@@ -53,8 +58,9 @@ F1Predictor/
 | Database | PostgreSQL (EF Core 10 + Npgsql) |
 | CQRS | Scaffold's own handler interfaces — no MediatR |
 | Validation | FluentValidation via a handler decorator |
-| ML | ML.NET — `SdcaLogisticRegression` |
+| ML | ML.NET — AutoML binary-classification search |
 | Championship odds | Plackett–Luce + Monte Carlo, hand-rolled in the Domain |
+| AI | Microsoft.Extensions.AI + OllamaSharp (optional, local Ollama) |
 | API docs | Scalar over OpenAPI, at `/scalar` |
 | Frontend | Next.js 16 App Router, React 19, Tailwind 4 |
 

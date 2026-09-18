@@ -11,6 +11,10 @@ It also looks forwards, not just back: it previews the next Grand Prix, keeps bo
 championship tables, and simulates the rest of the season to give each driver and
 constructor a title probability — see `ml-pipeline.md`.
 
+An AI layer sits beside the ML layer: `IChatClient` narrates model output and answers
+questions through tools; it never predicts — see `ml-pipeline.md`'s "Explaining a
+prediction" and "AI analyst" sections.
+
 This started as a flat console walking skeleton and has since been ported onto the layered
 scaffold produced by [CleanArchitectureGenerator](https://www.nuget.org/packages/CleanArchitectureGenerator)
 (`cleanarch new F1Predictor -d postgres --aspire`). The pipeline itself is unchanged — the
@@ -31,8 +35,9 @@ ranking model over race results. Those remain the natural next steps.
 | ORM | EF Core 10 + Npgsql |
 | CQRS | Scaffold's own `ICommandHandler<T,R>` / `IQueryHandler<T,R>` (no MediatR) |
 | Validation | FluentValidation, applied by a handler decorator |
-| ML | ML.NET 5 — `SdcaLogisticRegression`, not AutoML |
+| ML | ML.NET 5 — AutoML binary-classification search (see `ml-pipeline.md`) |
 | Championship odds | Plackett–Luce + Monte Carlo, hand-rolled in the Domain (see `ml-pipeline.md`) |
+| AI | Microsoft.Extensions.AI + OllamaSharp (local Ollama); `Ai:Provider=None` in production |
 | API docs | Scalar over OpenAPI, at `/scalar` |
 | Frontend | Next.js 16 App Router, React 19, Tailwind 4, axios, zustand |
 
@@ -49,22 +54,28 @@ F1Predictor/
 │   │                               SessionResultEntry, PitStopEntry, WeatherReading,
 │   │                               DriverEntry
 │   ├── Predictions/                DriverRaceFeature + the feature engineering rules
-│   └── Championship/               Points scale, standings + count-back, Plackett-Luce
-│                                   form fit, Monte Carlo simulator, title scenarios
+│   ├── Championship/               Points scale, standings + count-back, Plackett-Luce
+│   │                               form fit, Monte Carlo simulator, title scenarios
+│   └── Analysis/Entities/          RacePreviewNarrative (the persisted AI preview row)
 ├── F1Predictor.Application/
 │   ├── Abstractions/               IOpenF1Client, IModelTrainer, IRacePredictor,
-│   │                               IApplicationDbContext, ILegacyDatabaseImporter
+│   │                               IApplicationDbContext, ILegacyDatabaseImporter,
+│   │                               IChatClient, IAiCapabilities
 │   └── Features/                   Use cases, one folder per command/query
+│       └── Analysis/               Explanation, race preview and analyst-chat use cases
 ├── F1Predictor.Infrastructure/
 │   ├── Database/                   ApplicationDbContext, configurations, migrations
 │   ├── OpenF1/                     Typed HTTP client + politeness delay handler
-│   ├── MachineLearning/            ML.NET trainer and predictor
+│   ├── MachineLearning/            ML.NET trainer, predictor and feature-contribution explainer
+│   ├── AI/                         AiOptions, the Ollama IChatClient registration, AiCapabilities
 │   └── Legacy/                     One-off SQLite → Postgres import
-├── F1Predictor.WebApi/Endpoints/   One sealed class per endpoint
+├── F1Predictor.WebApi/Endpoints/   One sealed class per endpoint, incl. Analysis/
 ├── F1Predictor.Web/                Next.js frontend (not in the .slnx — AppHost runs it)
-│   └── src/{app,features,shared}/  Routes, feature slices, shared components
+│   └── src/{app,features,shared}/  Routes, feature slices (incl. features/analysis/), shared components
 ├── F1Predictor.AppHost/            Aspire orchestration
-└── F1Predictor.ServiceDefaults/    Aspire telemetry/health defaults
+├── F1Predictor.ServiceDefaults/    Aspire telemetry/health defaults
+└── tests/                          F1Predictor.Application.Tests, F1Predictor.Infrastructure.Tests
+                                     (see `project-status.md`)
 ```
 
 `F1Predictor.Web` is deliberately absent from `F1Predictor.slnx` — it is a Node app, wired up
@@ -75,7 +86,8 @@ layout code. Notably, `params` and `searchParams` are Promises and pages are typ
 generated `PageProps<"/route">` helper.
 
 Dependencies point inward only. Domain references nothing but `SharedKernel`; Application
-defines the ports; Infrastructure implements them; WebApi composes.
+defines the ports; Infrastructure implements them; WebApi composes. Application depends on
+`IChatClient` (Abstractions) and `IAiCapabilities`; Infrastructure picks the provider.
 
 ## Architecture
 

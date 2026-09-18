@@ -158,3 +158,102 @@ a shared seed alone would not keep published odds stable.
 upgrades, penalties, weather, or a driver's record at a given circuit. The
 `ChampionshipForecastResponse.Method` field carries this caveat in the payload, in the same
 spirit as `TrainModelsResponse.MetricGuidance`.
+
+## Explaining a prediction
+
+AutoML may pick any of five trainers per target (SDCA, LBFGS, LightGBM, FastTree, FastForest —
+see Model Training above), and the two committed models did not land on the same one: podium is a
+linear model (calibrated `LinearBinaryModelParameters`), points-finish is `FastTree`. Reading
+coefficients only works for the linear case, so `F1Predictor.Infrastructure/MachineLearning/
+ModelExplainer.cs` uses ML.NET's `CalculateFeatureContribution` instead — it is the one
+explanation method every trainer in the search space actually supports.
+
+- Contributions are computed with `normalize: false`, so they stay on the score scale rather than
+  a [0,1]-normalised one — that is what makes them comparable between drivers and, for a linear
+  model, means `Σ contributions + bias == score` (cross-checked in
+  `tests/F1Predictor.Infrastructure.Tests`). For a tree model the contributions are per-path, not
+  summands of a linear equation, but they are still signed and comparable the same way.
+- Feature slot names are read off the saved model's `Features` column schema
+  (`DataViewSchema.Column.GetSlotNames`), not hand-maintained, so they can never drift from what
+  the model was actually trained on; `RaceFeatureInput.FeatureNames` is only the fallback when a
+  model has no slot names at all.
+- `Direction` ("helps"/"hurts"/"neutral") is derived in the handler
+  (`TargetExplanationResponse.DirectionOf`) from the sign of the contribution — the model itself
+  has no notion of direction, only a signed number.
+- Finding the underlying trainer to hand to `CalculateFeatureContribution` needs an adapter: every
+  trainer's `Fit()` returns a `BinaryPredictionTransformer<TModel>` closed over its own model type,
+  and CLR variance can't cast that to
+  `ISingleFeaturePredictionTransformer<ICalculateFeatureContribution>` even though the runtime
+  instance supports it. `ModelExplainer.FindPredictionTransformer` walks the transformer chain from
+  the end and wraps the match in `FeatureContributionTransformerAdapter` to bridge the gap — this
+  is a real ML.NET limitation, not a shortcut.
+- A narrative sentence on top of the contribution table is optional: it only appears when an AI
+  provider is configured (see "AI analyst" below), and is cached for 10 minutes via
+  `CachedNarrative` (`Microsoft.Extensions.Caching.Hybrid`) so the same driver/session/model
+  combination doesn't re-prompt the LLM on every page view.
+
+## AI analyst
+
+An `IChatClient` (`Microsoft.Extensions.AI`, backed by OllamaSharp against a local Ollama daemon)
+sits beside the classifiers and the simulator. It narrates and answers questions; it never
+predicts — every number it states must come from a feature contribution, a query handler result,
+or a tool call, never from the model's own "reasoning". `Ai:Provider` defaults to `None`, which
+fails closed exactly like `Security:ApiKey`: an `UnavailableChatClient` is registered so handler
+constructors always resolve, and handlers guard on `IAiCapabilities.ChatAvailable` before ever
+calling it. `Ai:Provider=OpenAi` is accepted by configuration but throws at startup
+(`F1Predictor.Infrastructure/DependencyInjection.cs`, `AddAi`) — it is reserved for a hosted
+provider that is not implemented yet.
+
+`AiOptions` defaults: `Ollama.Endpoint` `http://localhost:11434`, `Ollama.Model` `llama3.1:8b` (any
+Ollama model with tool support), `Ollama.ContextLength` **16384** — Ollama's own default of 4096 is
+too small once a system prompt and a couple of tool results are in context, and the failure mode
+is a silently truncated conversation, not an error. `TimeoutSeconds` 120 with **no retries**: a
+generation that already took a minute and failed is worse to retry than to fail. `MaxToolIterations`
+6 caps tool-call round trips per request. `Temperature` 0.2 — narration should be repeatable, not
+creative.
+
+**Tools** (`F1Predictor.Application/Features/Analysis/AnalystTools.cs`) are thin `AIFunction`s over
+the *existing* query handlers, so the analyst can only ever surface numbers the rest of the API
+already serves:
+
+| Tool | Returns |
+|---|---|
+| `get_next_race_preview` | Podium/points probabilities for every driver in the next Grand Prix, and whether the grid is real or projected |
+| `explain_driver(driverNumber)` | The per-feature contribution breakdown behind one driver's next-race prediction |
+| `get_standings` | Top-10 drivers' and all constructors' championship tables |
+| `get_championship_forecast` | Top-8 title odds from the Monte Carlo simulation, with the method caveat |
+| `get_title_scenarios(topN=5)` | What each leading contender needs to win the drivers' title |
+| `get_season_races` | The season calendar with session keys, sprint/classified flags |
+| `get_race_predictions(sessionKey)` | Per-driver predicted probability vs. actual result for a classified race |
+
+Each tool returns a small DTO rounded to 2 dp and keyed by driver acronym rather than full name, so
+an 8B model's context survives a question that needs two or three tool calls. A failed lookup comes
+back as `{ unavailable: true, reason }`, never an exception — the model says "the model doesn't
+track that" instead of the request dying. The season is bound from the command, not chosen by the
+model, so it cannot wander into another year.
+
+**Prompt rules** (`AnalystPrompts.cs`) are composable blocks — Identity, Grounding, NoSpeculation,
+Brevity — mixed with one task-specific block per use case (driver explanation, race preview,
+analyst chat), so the "say 'the model', not 'I predict'" and "don't speculate about weather,
+upgrades, penalties" rules are defined exactly once and shared by all three.
+
+**SSE event vocabulary** (`POST /api/ai/ask`, `AnalystStream.Map`): `status` while a tool call is in
+flight (a human-readable line from `AnalystTools.StatusFor`, e.g. "Running the title odds…"),
+`delta` for each text fragment, `done` at the end of a normal stream, `error` on a transport fault
+(logged server-side with the real exception; the client only ever sees a generic message).
+
+**Preview persistence**: `GenerateRacePreviewCommand` writes (upserts) a `RacePreviewNarrative` row
+per session key; `GetRacePreviewQuery` reads it back. This is what lets production — where
+`Ai:Provider` is `None` — still serve a preview: whichever environment generated it (typically a
+developer running Ollama locally) writes the row once, and prod's `GET` is read-only from then on;
+only the `POST` route requires `ChatAvailable` and returns `Analysis.AiUnavailable` otherwise.
+
+**The `Stale` rule** (`GetRacePreviewQueryHandler`): a preview is stale when the real starting grid
+has since been published for a preview generated from a projected one, **or** a newer race in the
+previewed race's own season has been classified since generation
+(`narrative.BasedOnLatestClassifiedSessionKey` vs. the season's current latest classified session
+key). A `null` basis — recorded when the preview was generated before any race in that season had
+been classified — becomes stale the moment any classified session exists, not just a later one.
+The comparison is deliberately scoped to the previewed race's season: `BasedOnLatestClassifiedSessionKey`
+was set from `SeasonChampionship.LatestClassifiedSessionKey`, which only looks at that season, so
+comparing against a different season's latest classified race would flag every preview stale.

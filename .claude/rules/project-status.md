@@ -2,10 +2,18 @@
 
 ## Testing
 
-There is no automated test project yet. `F1Predictor.slnx` has an empty `/tests/` solution
-folder from the CleanArchitectureGenerator scaffold, and no project references a test
-framework. When tests are added, record the chosen framework and conventions here rather
-than assuming any. Contributions here are especially welcome — see `CONTRIBUTING.md`.
+Two test projects live under `/tests/`: `F1Predictor.Application.Tests` (42 tests) and
+`F1Predictor.Infrastructure.Tests` (8 tests), both xunit 2.9.3 + FluentAssertions 8.9.0. Test
+methods are named `Method_Scenario_Expectation`. Fakes are hand-written under each project's
+`Fakes/` folder (`FakeChatClient`, `FakeRacePredictor`, `FakeAiCapabilities`, `InMemoryDb`, and
+so on) in preference to Moq — Moq is pinned in `Directory.Packages.props` for the rare case a
+hand-written fake isn't worth it, but the AI-layer tests use none. Both test projects get
+`InternalsVisibleTo` from `F1Predictor.Application` and `F1Predictor.Infrastructure`, so
+`internal` handlers, tools and prompt builders are directly testable without a public surface
+just for tests. `tests/Directory.Build.props` and `tests/.editorconfig` hold the test-only
+analyzer relaxations (naming, mocking-friendly patterns) that would otherwise fail the repo's
+`TreatWarningsAsErrors` build outside test code. CI (`.github/workflows/ci.yml`) runs
+`dotnet test F1Predictor.slnx` as part of `Build & Verify`.
 
 ## Known Scope Cuts
 
@@ -23,6 +31,18 @@ These are deliberate boundaries for a first release, not oversights:
 
 1. Ingest 2–3 seasons instead of one for a less anemic training set.
 2. Add the `stints` endpoint → tyre compound / strategy features.
-3. Try the AutoML upgrade path once the SDCA baseline is trusted.
-4. Move ingestion onto a background queue so the endpoint returns `202` immediately.
-5. Retire the legacy SQLite import path.
+3. Move ingestion onto a background queue so the endpoint returns `202` immediately.
+4. Retire the legacy SQLite import path.
+
+Explicitly deferred from the AI analysis layer — designed in a local, uncommitted stage-4
+design doc (`docs/` is gitignored) rather than checked in here:
+
+5. A hosted chat provider for production (OpenAI direct) so the analyst and generated previews
+   work on the deployed site without a developer's local Ollama — config-only swap via
+   `Ai:Provider`.
+6. Explanations for already-classified races (`/api/races/{sessionKey}/predictions`), reusing
+   the same `Explain` port and a different loader from the next-race explanation.
+7. Background regeneration of the race preview after each ingest, so it stops being a button a
+   human has to press.
+8. Embeddings + semantic search over race fact sheets ("which race was most like this one?"),
+   needing `pgvector` on Neon and an embedding model.

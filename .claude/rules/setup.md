@@ -40,7 +40,56 @@ dotnet ef migrations add <Name> --project F1Predictor.Infrastructure \
 
 `--context` is required because the legacy SQLite import declares a second `DbContext`.
 
+**The `AddRacePreviewNarratives` migration has already been applied to Neon production** — it was
+rehearsed on a disposable Neon branch first (see below) and then run against production by hand
+before merge, per the rule immediately below for every future migration. This one entry is past
+tense; the "apply by hand before merging" rule still stands for the next model change.
+
 Then, from `/scalar`: ingest a season → rebuild features → train → read the holdout table.
+
+## AI (optional, local only)
+
+The analyst chat, driver-explanation narratives and generated race previews all need a chat
+model behind `IChatClient`. With no provider configured (`Ai:Provider` defaults to `None`) the
+API still runs — `/api/ai/status` reports `chatAvailable: false`, the explanation endpoint
+returns feature contributions with `narrative: null`, and the frontend hides the Analyst tab and
+the Generate/Regenerate buttons. To turn it on locally:
+
+```bash
+winget install Ollama.Ollama
+ollama pull llama3.1:8b
+dotnet user-secrets set "Ai:Provider" "Ollama" --project F1Predictor.WebApi
+```
+
+Production stays `Ai:Provider=None` — there is no Ollama daemon to reach from Azure Container
+Apps, and a hosted provider is not wired up yet (`Ai:Provider=OpenAi` is accepted by configuration
+but fails fast at startup — see `ml-pipeline.md`). Previews are generated locally, against a
+developer's own Ollama, and persisted to Postgres; production then serves the stored row
+read-only through `GET /api/races/{sessionKey}/preview` — nothing in prod needs to reach an LLM
+to display one.
+
+### Rehearsing a migration on a Neon branch first
+
+Before running a migration against the shared Neon database by hand (see the rule above), it is
+worth rehearsing it on a disposable branch so the diff can be inspected before it touches
+production:
+
+```bash
+npm i -g neon
+neon login
+neon link
+neon checkout <branch-name> --create --no-env-pull
+dotnet ef database update --project F1Predictor.Infrastructure \
+  --startup-project F1Predictor.WebApi --context ApplicationDbContext \
+  --connection "<branch connection string>"
+neon diff
+```
+
+`neon diff` compares the rehearsal branch's schema against production so the change can be
+confirmed as exactly the expected `CREATE TABLE` (or similar) before it is repeated against
+production for real. Never commit a connection string, host name, project id or org id — use
+`<placeholder>` forms as above, and get the real values from `neon connection-string` or the
+`LocalDb` user secret at the time you need them.
 
 `AppHost.cs` only ever runs the frontend locally, where `NEXT_PUBLIC_SITE_URL`'s
 `http://localhost:3000` fallback (`F1Predictor.Web/src/app/layout.tsx`) is already correct.

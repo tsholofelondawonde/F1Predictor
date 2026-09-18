@@ -42,6 +42,11 @@ aspire run
 
 Then from `/scalar`: ingest a season → rebuild features → train → read the holdout table.
 
+The AI analyst, driver-explanation narratives and generated race previews are optional and need
+a local [Ollama](https://ollama.com) daemon plus `dotnet user-secrets set "Ai:Provider" "Ollama"
+--project F1Predictor.WebApi` — see `setup.md`'s "AI (optional, local only)" section. Without it
+the API and frontend both work fine; the AI surface is simply hidden.
+
 More detail lives in [`.claude/rules/setup.md`](.claude/rules/setup.md).
 
 ## Conventions
@@ -63,8 +68,8 @@ Code style and architecture rules are documented under `.claude/rules/` — read
 - `cd F1Predictor.Web && npm run lint` for frontend changes.
 - If you changed an EF model, add a migration (see `setup.md`) — but do **not** run
   migrations against a shared database as part of the PR.
-- There is no test project yet. If you add one, note the framework in
-  `.claude/rules/project-status.md`.
+- `dotnet test F1Predictor.slnx` must pass — see `.claude/rules/project-status.md` for the
+  test projects, framework and naming convention. CI runs this as part of **Build & Verify**.
 
 ## Data source
 

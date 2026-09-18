@@ -14,6 +14,11 @@ internal static class AnalysisErrors
         "The language model returned an empty response.",
         "The AI did not produce a preview. Try again.");
 
+    public static readonly Error ProviderFailed = Error.Problem(
+        "Analysis.ProviderFailed",
+        "The language model provider threw while writing the preview; the exception is in the log.",
+        "The AI provider failed while writing the preview. Try again.");
+
     public static Error PreviewNotFound(int sessionKey) => Error.NotFound(
         "Analysis.PreviewNotFound",
         $"No preview narrative has been generated for session {sessionKey}.",

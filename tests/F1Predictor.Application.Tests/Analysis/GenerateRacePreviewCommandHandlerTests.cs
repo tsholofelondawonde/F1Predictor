@@ -6,6 +6,7 @@ using FluentAssertions;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace F1Predictor.Application.Tests.Analysis;
@@ -17,7 +18,7 @@ public sealed class GenerateRacePreviewCommandHandlerTests
     private static GenerateRacePreviewCommandHandler Handler(ApplicationDbContext db, FakeChatClient chat, bool aiAvailable, bool modelsAvailable = true) =>
         new(db, new FakeRacePredictor { ModelsAvailable = modelsAvailable }, new FakeAiCapabilities(aiAvailable), chat,
             new ServiceCollection().AddHybridCache().Services.BuildServiceProvider().GetRequiredService<HybridCache>(),
-            new FakeDateTimeProvider { UtcNow = FixedUtcNow });
+            new FakeDateTimeProvider { UtcNow = FixedUtcNow }, NullLogger<GenerateRacePreviewCommandHandler>.Instance);
 
     [Fact]
     public async Task Handle_AiUnavailable_ReturnsAiUnavailable()
@@ -126,6 +127,23 @@ public sealed class GenerateRacePreviewCommandHandlerTests
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Analysis.ModelRefused");
+        db.RacePreviewNarratives.ToList().Should().BeEmpty();
+    }
+
+    // A provider failure mid-generation (model not pulled, daemon gone) is a business failure
+    // to report, not an unhandled 500 — and the exception text must never reach the client.
+    [Fact]
+    public async Task Handle_ProviderThrows_ReturnsFailureNotException()
+    {
+        using var db = InMemoryDb.Create();
+        await SeasonSeed.SeedNextRaceAsync(db, withGrid: true);
+        var chat = new FakeChatClient { Throws = new FormatException("model 'llama3.1:8b' not found") };
+
+        var result = await Handler(db, chat, aiAvailable: true).Handle(new GenerateRacePreviewCommand { SessionKey = 20 }, CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Analysis.ProviderFailed");
+        result.Error.UserMessage.Should().NotContain("not found");
         db.RacePreviewNarratives.ToList().Should().BeEmpty();
     }
 }

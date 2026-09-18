@@ -82,6 +82,20 @@ public sealed class AnalystStreamTests
         events[0].Type.Should().Be("error");
     }
 
+    // OllamaSharp throws its own exception types (a model that is not pulled, a malformed
+    // response body) which the Application layer cannot name. Whatever the provider throws,
+    // the stream must end with one generic error event rather than let the exception escape
+    // after the SSE headers have gone out.
+    [Fact]
+    public async Task Map_ProviderThrowsUnlistedException_EndsWithErrorEvent()
+    {
+        var events = await AnalystStream.Map(ThrowsImmediately(new FormatException("model 'x' not found")), NullLogger.Instance, CancellationToken.None).ToListAsync();
+
+        events.Should().ContainSingle();
+        events[0].Type.Should().Be("error");
+        events[0].Text.Should().NotContain("not found");
+    }
+
     // Pins the other branch: when the CALLER's token is the one that was cancelled, the stream
     // ends silently (no error, no done, no exception escapes) rather than surfacing an error.
     [Fact]

@@ -10,8 +10,8 @@ internal sealed class RacePreviewNarrativeConfiguration : IEntityTypeConfigurati
     {
         builder.HasKey(n => n.Id);
         builder.HasIndex(n => n.SessionKey).IsUnique();
-        builder.Property(n => n.Model).HasMaxLength(100);
-        builder.Property(n => n.Headline).HasMaxLength(300);
+        builder.Property(n => n.Model).HasMaxLength(RacePreviewNarrative.ModelMaxLength);
+        builder.Property(n => n.Headline).HasMaxLength(RacePreviewNarrative.HeadlineMaxLength);
         // Content is unbounded markdown; Npgsql maps string to text by default.
     }
 }

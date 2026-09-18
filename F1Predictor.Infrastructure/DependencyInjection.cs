@@ -192,7 +192,12 @@ public static class DependencyInjection
                 chat.AdditionalProperties ??= [];
                 chat.AdditionalProperties.TryAdd("num_ctx", options.Ollama.ContextLength);
             })
-            .UseFunctionInvocation(configure: invoker => invoker.MaximumIterationsPerRequest = options.MaxToolIterations)
+            .UseFunctionInvocation(configure: invoker =>
+            {
+                invoker.MaximumIterationsPerRequest = options.MaxToolIterations;
+                // The seven tools all query through one scoped DbContext, which is not thread-safe.
+                invoker.AllowConcurrentInvocation = false;
+            })
             .UseLogging()
             .UseOpenTelemetry();
 

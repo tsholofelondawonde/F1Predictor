@@ -69,6 +69,39 @@ public sealed class ExplainDriverPredictionQueryHandlerTests
         result.Value.Narrative.Should().BeNull();
     }
 
+    // OllamaSharp's own exception types (model not pulled, malformed body) cannot be named from
+    // the Application layer; whatever the provider throws, the contributions must still come back.
+    [Fact]
+    public async Task Handle_NarrativeProviderThrowsUnlistedException_ReturnsContributionsWithNullNarrative()
+    {
+        using var db = InMemoryDb.Create();
+        await SeasonSeed.SeedNextRaceAsync(db, withGrid: false);
+        var chat = new FakeChatClient { Throws = new FormatException("model 'llama3.1:8b' not found") };
+
+        var result = await Handler(db, chat, aiAvailable: true).Handle(new(2026, 1), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Narrative.Should().BeNull();
+        result.Value.Model.Should().BeNull();
+        result.Value.Podium.Contributions.Should().HaveCount(5);
+    }
+
+    [Fact]
+    public async Task Handle_IncludeNarrativeFalse_SkipsChatClient()
+    {
+        using var db = InMemoryDb.Create();
+        await SeasonSeed.SeedNextRaceAsync(db, withGrid: true);
+        var chat = new FakeChatClient();
+
+        var result = await Handler(db, chat, aiAvailable: true).Handle(new(2026, 3, IncludeNarrative: false), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Narrative.Should().BeNull();
+        result.Value.Model.Should().BeNull();
+        result.Value.Podium.Contributions.Should().HaveCount(5);
+        chat.Calls.Should().BeEmpty();
+    }
+
     [Fact]
     public async Task Handle_RequestCancelled_PropagatesCancellation()
     {

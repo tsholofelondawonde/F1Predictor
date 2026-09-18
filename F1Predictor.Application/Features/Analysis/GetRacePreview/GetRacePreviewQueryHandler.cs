@@ -15,7 +15,10 @@ internal sealed class GetRacePreviewQueryHandler(IApplicationDbContext context) 
     public async Task<Result<RacePreviewResponse>> Handle(GetRacePreviewQuery query, CancellationToken cancellationToken)
     {
         var narrative = await context.RacePreviewNarratives.AsNoTracking().FirstOrDefaultAsync(n => n.SessionKey == query.SessionKey, cancellationToken);
-        if (narrative is null) return Result.Failure<RacePreviewResponse>(AnalysisErrors.PreviewNotFound(query.SessionKey));
+        if (narrative is null)
+        {
+            return Result.Failure<RacePreviewResponse>(AnalysisErrors.PreviewNotFound(query.SessionKey));
+        }
 
         var race = await (from session in context.RaceSessions
                           join meeting in context.Meetings on session.MeetingKey equals meeting.MeetingKey

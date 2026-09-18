@@ -38,7 +38,7 @@ internal sealed class AnalystTools(
             "Current drivers' (top 10) and constructors' championship tables."),
         AIFunctionFactory.Create((CancellationToken ct) => ForecastAsync(year, ct), "get_championship_forecast",
             "Title odds from the Monte Carlo season simulation, top 8 drivers, with the method caveat."),
-        AIFunctionFactory.Create(([Description("How many contenders, default 5")] int topN, CancellationToken ct) => ScenariosAsync(year, topN, ct), "get_title_scenarios",
+        AIFunctionFactory.Create(([Description("How many contenders, default 5")] int topN = 5, CancellationToken ct = default) => ScenariosAsync(year, topN, ct), "get_title_scenarios",
             "What each leading contender needs to win the drivers' title."),
         AIFunctionFactory.Create((CancellationToken ct) => RacesAsync(year, ct), "get_season_races",
             "The season calendar with session keys, and which races are classified or sprints."),
@@ -66,13 +66,13 @@ internal sealed class AnalystTools(
         return new
         {
             race = r.MeetingName, dateUtc = r.DateStart, gridConfirmed = r.GridConfirmed,
-            drivers = r.Drivers.Select(d => new { d.NameAcronym, team = d.TeamName, grid = (int)d.GridPosition, podium = R(d.PodiumProbability), points = R(d.PointsProbability) })
+            drivers = r.Drivers.Select(d => new { acronym = d.NameAcronym, team = d.TeamName, grid = (int)d.GridPosition, podium = R(d.PodiumProbability), points = R(d.PointsProbability) })
         };
     }
 
     private async Task<object> ExplainDriverAsync(int year, int driverNumber, CancellationToken ct)
     {
-        var result = await explain.Handle(new ExplainDriverPredictionQuery(year, driverNumber), ct);
+        var result = await explain.Handle(new ExplainDriverPredictionQuery(year, driverNumber, IncludeNarrative: false), ct);
         if (result.IsFailure) return Unavailable(result.Error);
         var r = result.Value;
         return new

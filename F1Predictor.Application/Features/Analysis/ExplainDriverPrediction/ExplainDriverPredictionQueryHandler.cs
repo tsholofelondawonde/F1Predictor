@@ -53,7 +53,7 @@ internal sealed class ExplainDriverPredictionQueryHandler(
         var podium = TargetExplanationResponse.From(explanation.Podium);
         var points = TargetExplanationResponse.From(explanation.PointsFinish);
 
-        var narrative = ai.ChatAvailable
+        var narrative = ai.ChatAvailable && query.IncludeNarrative
             ? await NarrativeAsync(next, entry, podium, points, cancellationToken)
             : null;
 
@@ -104,8 +104,11 @@ internal sealed class ExplainDriverPredictionQueryHandler(
 
             return string.IsNullOrWhiteSpace(text) ? null : text;
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException
-            && !cancellationToken.IsCancellationRequested)
+        // Deliberately every exception, not a list: OllamaSharp throws its own types (a model that
+        // is not pulled, a malformed body) which this layer cannot name, and none of them should
+        // cost the caller the contributions. The filter still lets the caller's own cancellation
+        // propagate.
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
             logger.LogWarning(ex, "Narrative generation failed for car {DriverNumber}; returning the structured explanation only.", entry.DriverNumber);
             return null;

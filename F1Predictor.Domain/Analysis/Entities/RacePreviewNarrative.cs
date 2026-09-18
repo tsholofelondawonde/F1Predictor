@@ -6,6 +6,12 @@ namespace F1Predictor.Domain.Analysis.Entities;
 /// </summary>
 public class RacePreviewNarrative
 {
+    /// <summary>Column length of <see cref="Model"/>; the writer truncates to it and the EF configuration maps it.</summary>
+    public const int ModelMaxLength = 100;
+
+    /// <summary>Column length of <see cref="Headline"/>; the writer truncates to it and the EF configuration maps it.</summary>
+    public const int HeadlineMaxLength = 300;
+
     public int Id { get; set; }
 
     /// <summary>The race session previewed. Unique.</summary>

@@ -29,8 +29,11 @@ internal static class AnalystStream
             {
                 yield break;
             }
-            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException or IOException
-                && !cancellationToken.IsCancellationRequested)
+            // Deliberately every exception, not a list: OllamaSharp throws its own types (a model that
+            // is not pulled, a malformed body) which this layer cannot name, and by now the SSE
+            // headers have gone out, so anything that escapes here is an aborted response rather
+            // than a 500. The filter keeps the caller's own cancellation on the clause above.
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
                 logger.LogError(ex, "Analyst stream failed.");
                 moved = false;

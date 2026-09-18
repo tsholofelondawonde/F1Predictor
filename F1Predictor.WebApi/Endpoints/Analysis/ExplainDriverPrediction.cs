@@ -5,7 +5,7 @@ using F1Predictor.WebApi.Infrastructure;
 
 namespace F1Predictor.WebApi.Endpoints.Analysis;
 
-public sealed class ExplainDriverPrediction : IEndpoint
+internal sealed class ExplainDriverPrediction : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

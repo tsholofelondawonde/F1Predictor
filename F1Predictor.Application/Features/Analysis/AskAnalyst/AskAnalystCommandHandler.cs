@@ -17,8 +17,15 @@ internal sealed class AskAnalystCommandHandler(
     // handed back, not when it finishes. Acceptable: per-token completion is not a log line.
     public Task<Result<AnalystReply>> Handle(AskAnalystCommand command, CancellationToken cancellationToken)
     {
-        if (!ai.ChatAvailable) return Task.FromResult(Result.Failure<AnalystReply>(AnalysisErrors.AiUnavailable));
-        if (!predictor.ModelsAvailable) return Task.FromResult(Result.Failure<AnalystReply>(PredictionErrors.ModelsNotTrained));
+        if (!ai.ChatAvailable)
+        {
+            return Task.FromResult(Result.Failure<AnalystReply>(AnalysisErrors.AiUnavailable));
+        }
+
+        if (!predictor.ModelsAvailable)
+        {
+            return Task.FromResult(Result.Failure<AnalystReply>(PredictionErrors.ModelsNotTrained));
+        }
 
         var today = DateOnly.FromDateTime(clock.UtcNow);
         List<ChatMessage> messages = [new ChatMessage(ChatRole.System, AnalystPrompts.AnalystSystem(command.Year, today))];

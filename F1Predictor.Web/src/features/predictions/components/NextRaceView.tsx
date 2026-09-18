@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
+import { RacePreviewNarrative } from "@/features/analysis/components/RacePreviewNarrative";
 import { getNextRacePreview } from "@/features/predictions/predictions-service";
 import { PreviewTable } from "@/features/predictions/components/PreviewTable";
 import { getDataStatus } from "@/features/seasons/seasons-service";
@@ -106,8 +107,10 @@ export function NextRaceView({ year }: NextRaceViewProps) {
         </p>
       )}
 
+      <RacePreviewNarrative sessionKey={data.sessionKey} />
+
       <Card>
-        <PreviewTable drivers={data.drivers} gridConfirmed={data.gridConfirmed} />
+        <PreviewTable drivers={data.drivers} gridConfirmed={data.gridConfirmed} year={year} />
       </Card>
 
       <LiveFooter lastUpdated={lastUpdated} refreshing={refreshing} onRefresh={refresh} />

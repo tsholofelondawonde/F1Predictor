@@ -38,4 +38,9 @@ internal static class AnalysisErrors
         "Analysis.DriverNotEntered",
         $"Car {driverNumber} is not on the entry list for the next Grand Prix.",
         "That driver is not entered in the next race.");
+
+    public static Error DriverNotInRace(int sessionKey, int driverNumber) => Error.NotFound(
+        "Analysis.DriverNotInRace",
+        $"Car {driverNumber} has no recorded result for session {sessionKey}.",
+        "That driver did not take part in this race.");
 }

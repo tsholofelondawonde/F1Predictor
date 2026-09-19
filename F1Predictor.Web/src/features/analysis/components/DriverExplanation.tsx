@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { explainDriver } from "@/features/analysis/analysis-service";
+import { explainDriver, explainRaceDriver } from "@/features/analysis/analysis-service";
 import type {
   DriverExplanationResponse,
   FeatureContribution,
@@ -13,8 +13,21 @@ import { ApiError } from "@/shared/lib/api-error";
 import { getErrorDisplay } from "@/shared/lib/error-display";
 
 interface DriverExplanationProps {
-  year: number;
+  /** Which endpoint to read the explanation from — a projected or real next-race prediction, or an already-classified race's. */
+  source: "next-race" | "classified";
+  /** The season, for `source: "next-race"`. */
+  year?: number;
+  /** The race session key, for `source: "classified"`. */
+  sessionKey?: number;
   driverNumber: number;
+}
+
+const ORDINAL_SUFFIXES: Record<number, string> = { 1: "st", 2: "nd", 3: "rd" };
+
+function ordinal(position: number): string {
+  const mod100 = position % 100;
+  const suffix = mod100 >= 11 && mod100 <= 13 ? "th" : (ORDINAL_SUFFIXES[position % 10] ?? "th");
+  return `${position}${suffix}`;
 }
 
 /** Feature names as the model knows them, in reader's terms. */
@@ -101,14 +114,19 @@ function ContributionList({ title, target }: ContributionListProps) {
  * Fetched once on mount, not polled: a row is expanded to read, and the numbers behind it only
  * move when the grid or the models do — the table above already refreshes on a timer.
  */
-export function DriverExplanation({ year, driverNumber }: DriverExplanationProps) {
+export function DriverExplanation({ source, year, sessionKey, driverNumber }: DriverExplanationProps) {
   const [data, setData] = useState<DriverExplanationResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
-    explainDriver(year, driverNumber)
+    const request =
+      source === "classified"
+        ? explainRaceDriver(sessionKey!, driverNumber)
+        : explainDriver(year!, driverNumber);
+
+    request
       .then((response) => {
         if (!cancelled) setData(response);
       })
@@ -120,7 +138,7 @@ export function DriverExplanation({ year, driverNumber }: DriverExplanationProps
     return () => {
       cancelled = true;
     };
-  }, [year, driverNumber]);
+  }, [source, year, sessionKey, driverNumber]);
 
   if (error) {
     return <p className="py-2 text-xs text-(--color-muted)">{error}</p>;
@@ -137,6 +155,12 @@ export function DriverExplanation({ year, driverNumber }: DriverExplanationProps
 
   return (
     <div className="py-2">
+      {data.finishPosition !== null && (
+        <p className="mb-3 font-mono text-xs text-(--color-muted)">
+          Predicted {formatProbability(data.podium.probability)} podium → finished {ordinal(data.finishPosition)}
+        </p>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2">
         <ContributionList title="Podium" target={data.podium} />
         <ContributionList title="Points" target={data.pointsFinish} />

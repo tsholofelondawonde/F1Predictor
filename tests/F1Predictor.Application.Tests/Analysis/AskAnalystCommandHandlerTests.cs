@@ -1,6 +1,7 @@
 using F1Predictor.Application.Features.Analysis;
 using F1Predictor.Application.Features.Analysis.AskAnalyst;
 using F1Predictor.Application.Features.Analysis.ExplainDriverPrediction;
+using F1Predictor.Application.Features.Analysis.ExplainRacePrediction;
 using F1Predictor.Application.Features.Championship.GetForecast;
 using F1Predictor.Application.Features.Championship.GetScenarios;
 using F1Predictor.Application.Features.Championship.GetStandings;
@@ -24,7 +25,8 @@ public sealed class AskAnalystCommandHandlerTests
         new StubQueryHandler<GetChampionshipForecastQuery, ChampionshipForecastResponse>(),
         new StubQueryHandler<GetTitleScenariosQuery, TitleScenariosResponse>(),
         new StubQueryHandler<GetSeasonRacesQuery, IReadOnlyList<SeasonRaceResponse>>(),
-        new StubQueryHandler<PredictRaceQuery, RacePredictionsResponse>());
+        new StubQueryHandler<PredictRaceQuery, RacePredictionsResponse>(),
+        new StubQueryHandler<ExplainRacePredictionQuery, DriverExplanationResponse>());
 
     private static AskAnalystCommandHandler Handler(FakeChatClient chat, bool aiAvailable = true, bool modelsAvailable = true) =>
         new(chat, new FakeAiCapabilities(aiAvailable), new FakeRacePredictor { ModelsAvailable = modelsAvailable },
@@ -71,7 +73,7 @@ public sealed class AskAnalystCommandHandlerTests
         chat.Calls.Should().HaveCount(1);
         chat.Calls[0][0].Role.Should().Be(ChatRole.System);
         chat.Calls[0][0].Text.Should().Contain("2026");
-        chat.Options[0]!.Tools.Should().HaveCount(7);
+        chat.Options[0]!.Tools.Should().HaveCount(8);
     }
 
     [Fact]

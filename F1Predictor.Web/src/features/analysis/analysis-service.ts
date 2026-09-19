@@ -20,6 +20,8 @@ export const generateRacePreview = (sessionKey: number) =>
   api.post<RacePreviewResponse>(`/races/${sessionKey}/preview`).then((r) => r.data);
 export const explainDriver = (year: number, driverNumber: number) =>
   api.get<DriverExplanationResponse>(`/seasons/${year}/next-race/drivers/${driverNumber}/explanation`).then((r) => r.data);
+export const explainRaceDriver = (sessionKey: number, driverNumber: number) =>
+  api.get<DriverExplanationResponse>(`/races/${sessionKey}/predictions/${driverNumber}/explanation`).then((r) => r.data);
 
 const EVENT_TYPES: readonly AnalystEventType[] = ["status", "delta", "done", "error"];
 

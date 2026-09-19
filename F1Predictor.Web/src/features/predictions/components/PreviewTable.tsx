@@ -125,7 +125,7 @@ export function PreviewTable({ drivers, gridConfirmed, year }: PreviewTableProps
                 {isExpanded && year !== undefined && (
                   <tr id={detailId} className="border-b border-(--color-border) bg-(--color-surface-hover)/40 last:border-0">
                     <td colSpan={columnCount} className="px-3 py-1">
-                      <DriverExplanation year={year} driverNumber={driver.driverNumber} />
+                      <DriverExplanation source="next-race" year={year} driverNumber={driver.driverNumber} />
                     </td>
                   </tr>
                 )}

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using F1Predictor.Application.Features.Analysis;
 using F1Predictor.Application.Features.Analysis.ExplainDriverPrediction;
+using F1Predictor.Application.Features.Analysis.ExplainRacePrediction;
 using F1Predictor.Application.Features.Championship.GetForecast;
 using F1Predictor.Application.Features.Championship.GetScenarios;
 using F1Predictor.Application.Features.Championship.GetStandings;
@@ -29,7 +30,8 @@ public sealed class AnalystToolsTests
         new StubQueryHandler<GetChampionshipForecastQuery, ChampionshipForecastResponse>(),
         new StubQueryHandler<GetTitleScenariosQuery, TitleScenariosResponse>(),
         new StubQueryHandler<GetSeasonRacesQuery, IReadOnlyList<SeasonRaceResponse>>(),
-        new StubQueryHandler<PredictRaceQuery, RacePredictionsResponse>());
+        new StubQueryHandler<PredictRaceQuery, RacePredictionsResponse>(),
+        new StubQueryHandler<ExplainRacePredictionQuery, DriverExplanationResponse>());
 
     // The tool returns the contribution table only, so it must not spend a second LLM
     // generation on a narrative it then discards — inside a chat the provider is by

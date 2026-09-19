@@ -36,9 +36,17 @@ internal static class AnalystPrompts
         "numbers present in the context. If gridConfirmed is false, the Caveats section must state " +
         "that the grid is projected from recent form.";
 
+    private const string RetrospectiveTask =
+        "You will receive one driver's prediction, the contribution of each feature, and how they " +
+        "actually finished. Describe in at most three sentences which contributions were borne out " +
+        "by the result and which were not. Do not invent a cause that is not in the contribution " +
+        "table — \"the model underrated their pace\" is not something you can know.";
+
     public static string DriverExplanationSystem() => Compose(Identity, Grounding, NoSpeculation, DriverExplanationTask);
 
     public static string RacePreviewSystem() => Compose(Identity, Grounding, NoSpeculation, RacePreviewFormat);
+
+    public static string ExplainRaceSystem() => Compose(Identity, Grounding, NoSpeculation, RetrospectiveTask);
 
     public static string AnalystSystem(int year, DateOnly today) => Compose(
         Identity, Grounding, NoSpeculation, Brevity,

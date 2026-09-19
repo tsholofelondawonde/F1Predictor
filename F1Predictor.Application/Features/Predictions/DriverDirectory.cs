@@ -17,7 +17,7 @@ namespace F1Predictor.Application.Features.Predictions;
 /// drivers fall back to a car-number placeholder — the prediction is still perfectly good, and
 /// re-ingesting the season with <c>force=true</c> fills the names in.
 /// </remarks>
-internal sealed class DriverDirectory(Dictionary<int, DriverEntry> entries)
+internal sealed class DriverDirectory(IReadOnlyDictionary<int, DriverEntry> entries)
 {
     public static async Task<DriverDirectory> ForSessionAsync(
         IApplicationDbContext context,

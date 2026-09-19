@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using F1Predictor.Application.Abstractions.Messaging;
 using F1Predictor.Application.Features.Analysis.ExplainDriverPrediction;
+using F1Predictor.Application.Features.Analysis.ExplainRacePrediction;
 using F1Predictor.Application.Features.Championship.GetForecast;
 using F1Predictor.Application.Features.Championship.GetScenarios;
 using F1Predictor.Application.Features.Championship.GetStandings;
@@ -26,7 +27,8 @@ internal sealed class AnalystTools(
     IQueryHandler<GetChampionshipForecastQuery, ChampionshipForecastResponse> forecast,
     IQueryHandler<GetTitleScenariosQuery, TitleScenariosResponse> scenarios,
     IQueryHandler<GetSeasonRacesQuery, IReadOnlyList<SeasonRaceResponse>> races,
-    IQueryHandler<PredictRaceQuery, RacePredictionsResponse> predictions)
+    IQueryHandler<PredictRaceQuery, RacePredictionsResponse> predictions,
+    IQueryHandler<ExplainRacePredictionQuery, DriverExplanationResponse> explainRace)
 {
     public IList<AITool> For(int year) =>
     [
@@ -43,7 +45,9 @@ internal sealed class AnalystTools(
         AIFunctionFactory.Create((CancellationToken ct) => RacesAsync(year, ct), "get_season_races",
             "The season calendar with session keys, and which races are classified or sprints."),
         AIFunctionFactory.Create(([Description("Race session key from get_season_races")] int sessionKey, CancellationToken ct) => RacePredictionsAsync(sessionKey, ct), "get_race_predictions",
-            "For a classified race: each driver's predicted probabilities against where they actually finished.")
+            "For a classified race: each driver's predicted probabilities against where they actually finished."),
+        AIFunctionFactory.Create(([Description("Race session key from get_season_races")] int sessionKey, [Description("Car number")] int driverNumber, CancellationToken ct) => ExplainRaceDriverAsync(sessionKey, driverNumber, ct), "explain_race_driver",
+            "Why the model rated one driver the way it did for a classified race, and how they actually finished: each feature's contribution.")
     ];
 
     public static string StatusFor(string functionName) => functionName switch
@@ -55,6 +59,7 @@ internal sealed class AnalystTools(
         "get_title_scenarios" => "Working out title scenarios…",
         "get_season_races" => "Checking the calendar…",
         "get_race_predictions" => "Comparing predictions with results…",
+        "explain_race_driver" => "Comparing that driver's prediction with the result…",
         _ => "Consulting the model…"
     };
 
@@ -81,6 +86,22 @@ internal sealed class AnalystTools(
             gridConfirmed = r.GridConfirmed,
             podium = TargetSummary(r.Podium),
             pointsFinish = TargetSummary(r.PointsFinish)
+        };
+    }
+
+    private async Task<object> ExplainRaceDriverAsync(int sessionKey, int driverNumber, CancellationToken ct)
+    {
+        var result = await explainRace.Handle(new ExplainRacePredictionQuery(sessionKey, driverNumber), ct);
+        if (result.IsFailure) return Unavailable(result.Error);
+        var r = result.Value;
+        return new
+        {
+            driver = r.NameAcronym,
+            podium = TargetSummary(r.Podium),
+            pointsFinish = TargetSummary(r.PointsFinish),
+            finishPosition = r.FinishPosition,
+            actualPodium = r.ActualPodium,
+            actualPointsFinish = r.ActualPointsFinish
         };
     }
 

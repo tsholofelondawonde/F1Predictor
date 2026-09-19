@@ -9,6 +9,7 @@ using F1Predictor.Application.Features.Predictions.PredictRace;
 using F1Predictor.Application.Features.Predictions.PreviewNextRace;
 using F1Predictor.Application.Features.Seasons.GetRaces;
 using F1Predictor.Application.Tests.Fakes;
+using F1Predictor.Domain.RaceData.Entities;
 using F1Predictor.Infrastructure.Database;
 using FluentAssertions;
 using Microsoft.Extensions.AI;
@@ -33,6 +34,18 @@ public sealed class AnalystToolsTests
         new StubQueryHandler<PredictRaceQuery, RacePredictionsResponse>(),
         new StubQueryHandler<ExplainRacePredictionQuery, DriverExplanationResponse>());
 
+    private static AnalystTools ToolsWithRealExplainRace(ApplicationDbContext db, FakeChatClient chat) => new(
+        new StubQueryHandler<PreviewNextRaceQuery, NextRacePreviewResponse>(),
+        new StubQueryHandler<ExplainDriverPredictionQuery, DriverExplanationResponse>(),
+        new StubQueryHandler<GetStandingsQuery, StandingsResponse>(),
+        new StubQueryHandler<GetChampionshipForecastQuery, ChampionshipForecastResponse>(),
+        new StubQueryHandler<GetTitleScenariosQuery, TitleScenariosResponse>(),
+        new StubQueryHandler<GetSeasonRacesQuery, IReadOnlyList<SeasonRaceResponse>>(),
+        new StubQueryHandler<PredictRaceQuery, RacePredictionsResponse>(),
+        new ExplainRacePredictionQueryHandler(db, new FakeRacePredictor(), new FakeAiCapabilities(chatAvailable: true), chat,
+            new ServiceCollection().AddHybridCache().Services.BuildServiceProvider().GetRequiredService<HybridCache>(),
+            NullLogger<ExplainRacePredictionQueryHandler>.Instance));
+
     // The tool returns the contribution table only, so it must not spend a second LLM
     // generation on a narrative it then discards — inside a chat the provider is by
     // definition available, which is exactly when the handler would otherwise write one.
@@ -49,6 +62,31 @@ public sealed class AnalystToolsTests
         chat.Calls.Should().BeEmpty();
         var json = JsonSerializer.Serialize(result);
         json.Should().Contain("\"driver\":\"D03\"");
+        json.Should().Contain("\"signals\"");
+        json.Should().NotContain("narrative");
+        json.Should().NotContain("unavailable");
+    }
+
+    // Same rule as explain_driver above, for the classified-race counterpart: the tool returns
+    // the contribution table only, so it must not spend a second LLM generation on a narrative
+    // it then discards.
+    [Fact]
+    public async Task ExplainRaceDriver_InvokedAsTool_ReturnsContributionsWithoutCallingChatClient()
+    {
+        using var db = InMemoryDb.Create();
+        await SeasonSeed.SeedNextRaceAsync(db, withGrid: false);
+        // Session 10 (the already-classified "Past GP") only gets feature rows from SeasonSeed;
+        // add the entry needed to describe a driver by name.
+        db.DriverEntries.Add(new DriverEntry { SessionKey = 10, DriverNumber = 1, FullName = "Driver 1", NameAcronym = "D01", TeamName = "Team", TeamColour = "FF0000" });
+        await db.SaveChangesAsync();
+        var chat = new FakeChatClient();
+        var explainRace = (AIFunction)ToolsWithRealExplainRace(db, chat).For(2026).Single(t => t.Name == "explain_race_driver");
+
+        var result = await explainRace.InvokeAsync(new AIFunctionArguments { ["sessionKey"] = 10, ["driverNumber"] = 1 }, CancellationToken.None);
+
+        chat.Calls.Should().BeEmpty();
+        var json = JsonSerializer.Serialize(result);
+        json.Should().Contain("\"driver\":\"D01\"");
         json.Should().Contain("\"signals\"");
         json.Should().NotContain("narrative");
         json.Should().NotContain("unavailable");

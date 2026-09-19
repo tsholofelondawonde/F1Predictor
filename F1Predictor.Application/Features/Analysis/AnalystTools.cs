@@ -91,7 +91,7 @@ internal sealed class AnalystTools(
 
     private async Task<object> ExplainRaceDriverAsync(int sessionKey, int driverNumber, CancellationToken ct)
     {
-        var result = await explainRace.Handle(new ExplainRacePredictionQuery(sessionKey, driverNumber), ct);
+        var result = await explainRace.Handle(new ExplainRacePredictionQuery(sessionKey, driverNumber, IncludeNarrative: false), ct);
         if (result.IsFailure) return Unavailable(result.Error);
         var r = result.Value;
         return new

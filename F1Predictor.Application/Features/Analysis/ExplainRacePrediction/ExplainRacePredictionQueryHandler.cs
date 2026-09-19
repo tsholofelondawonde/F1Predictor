@@ -59,7 +59,7 @@ internal sealed class ExplainRacePredictionQueryHandler(
         var podium = TargetExplanationResponse.From(explanation.Podium);
         var points = TargetExplanationResponse.From(explanation.PointsFinish);
 
-        var narrative = ai.ChatAvailable
+        var narrative = ai.ChatAvailable && query.IncludeNarrative
             ? await NarrativeAsync(query.SessionKey, feature, entry, podium, points, cancellationToken)
             : null;
 

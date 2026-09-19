@@ -48,23 +48,29 @@ internal sealed class IngestSeasonCommandHandler(
             meetings.Count, command.Year, command.Force);
 
         var outcomes = new List<IngestedMeeting>(meetings.Count);
+        var classifiedSessionKeys = new List<int>();
+        var gridStored = false;
 
         foreach (var meeting in meetings)
         {
-            var outcome = await IngestMeetingAsync(meeting, command.Force, cancellationToken);
-            outcomes.Add(outcome);
+            var meetingResult = await IngestMeetingAsync(meeting, command.Force, cancellationToken);
+            outcomes.Add(meetingResult.Meeting);
+            classifiedSessionKeys.AddRange(meetingResult.ClassifiedSessionKeys);
+            gridStored |= meetingResult.GridStored;
         }
 
         var response = new IngestSeasonResponse(
             command.Year,
             meetings.Count,
             outcomes.Count(o => o.Outcome == IngestOutcome.Ingested),
-            outcomes);
+            outcomes,
+            classifiedSessionKeys,
+            gridStored);
 
         return Result.Success(response);
     }
 
-    private async Task<IngestedMeeting> IngestMeetingAsync(
+    private async Task<MeetingIngestResult> IngestMeetingAsync(
         OpenF1Meeting meeting,
         bool force,
         CancellationToken cancellationToken)
@@ -83,22 +89,47 @@ internal sealed class IngestSeasonCommandHandler(
         if (pointsScoring.Count == 0)
         {
             logger.LogInformation("{MeetingName}: no race session yet, skipping.", meeting.MeetingName);
-            return IngestedMeeting.NothingToDo(meeting.MeetingKey, meeting.MeetingName, IngestOutcome.NoRaceSession);
+            return new MeetingIngestResult(
+                IngestedMeeting.NothingToDo(meeting.MeetingKey, meeting.MeetingName, IngestOutcome.NoRaceSession),
+                [],
+                GridStored: false);
         }
 
-        var totals = SessionTotals.Empty;
-        var outcomes = new List<IngestOutcome>(pointsScoring.Count);
+        var sessionResults = new List<SessionIngestResult>(pointsScoring.Count);
 
         foreach (var session in pointsScoring)
         {
             var (outcome, sessionTotals) = await IngestSessionAsync(
                 meeting, session, sessions, force, cancellationToken);
 
-            outcomes.Add(outcome);
-            totals += sessionTotals;
+            sessionResults.Add(new SessionIngestResult(session.SessionKey, outcome, sessionTotals));
         }
 
-        return new IngestedMeeting(
+        return BuildMeetingResult(meeting, sessionResults);
+    }
+
+    /// <summary>
+    /// Rolls a weekend's per-session outcomes up into the one summary row plus the two extra
+    /// facts (see <see cref="MeetingIngestResult"/>) the ingestion coordinator needs without a
+    /// follow-up query.
+    /// </summary>
+    private static MeetingIngestResult BuildMeetingResult(OpenF1Meeting meeting, IReadOnlyList<SessionIngestResult> sessionResults)
+    {
+        var outcomes = sessionResults.Select(r => r.Outcome).ToList();
+        var totals = sessionResults.Aggregate(SessionTotals.Empty, (acc, r) => acc + r.Totals);
+
+        // The per-session outcome is Ingested only once results have been published, so this is
+        // exactly the set of sessions that became classified by this run.
+        var classifiedSessionKeys = sessionResults
+            .Where(r => r.Outcome == IngestOutcome.Ingested)
+            .Select(r => r.SessionKey)
+            .ToList();
+
+        // Grid rows are only ever non-zero here when they were freshly persisted this run — an
+        // already-present session short-circuits to SessionTotals.Empty before reaching this point.
+        var gridStored = sessionResults.Any(r => r.Totals.Grid > 0);
+
+        var ingestedMeeting = new IngestedMeeting(
             meeting.MeetingKey,
             meeting.MeetingName,
             Summarise(outcomes),
@@ -109,7 +140,18 @@ internal sealed class IngestSeasonCommandHandler(
             totals.PitStops,
             totals.WeatherReadings,
             totals.DriverEntries);
+
+        return new MeetingIngestResult(ingestedMeeting, classifiedSessionKeys, gridStored);
     }
+
+    /// <summary>One session's outcome, kept alongside its key so classified sessions can be reported by key.</summary>
+    private sealed record SessionIngestResult(int SessionKey, IngestOutcome Outcome, SessionTotals Totals);
+
+    /// <summary>One weekend's outcome plus the two facts the ingestion coordinator needs without re-querying.</summary>
+    private sealed record MeetingIngestResult(
+        IngestedMeeting Meeting,
+        IReadOnlyList<int> ClassifiedSessionKeys,
+        bool GridStored);
 
     /// <summary>
     /// Collapses a weekend's per-session outcomes into the one that best describes it, most
@@ -263,7 +305,7 @@ internal sealed class IngestSeasonCommandHandler(
             : [];
 
         return new SessionPayload(
-            isClassified, qualifyingSession?.SessionKey, grid, results, pits, weather, drivers);
+            isClassified, qualifyingSession?.SessionKey, qualifyingSession?.DateStart, grid, results, pits, weather, drivers);
     }
 
     /// <summary>
@@ -314,6 +356,7 @@ internal sealed class IngestSeasonCommandHandler(
             SessionType = session.SessionType,
             DateStart = session.DateStart,
             QualifyingSessionKey = payload.QualifyingSessionKey,
+            QualifyingDateStart = payload.QualifyingDateStart,
             IsSprint = isSprint,
             IsClassified = payload.IsClassified
         });
@@ -408,6 +451,7 @@ internal sealed class IngestSeasonCommandHandler(
     private sealed record SessionPayload(
         bool IsClassified,
         int? QualifyingSessionKey,
+        DateTimeOffset? QualifyingDateStart,
         IReadOnlyList<OpenF1StartingGrid> Grid,
         IReadOnlyList<OpenF1SessionResult> Results,
         IReadOnlyList<OpenF1Pit> Pits,

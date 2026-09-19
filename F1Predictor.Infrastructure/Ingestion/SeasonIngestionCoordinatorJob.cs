@@ -31,16 +31,8 @@ internal sealed class SeasonIngestionCoordinatorJob(
     public async Task Execute(IJobExecutionContext context)
     {
         var cancellationToken = context.CancellationToken;
-        var cutoff = new DateTimeOffset(dateTimeProvider.UtcNow, TimeSpan.Zero)
-            - TimeSpan.FromMinutes(options.Value.PostSessionBufferMinutes);
 
-        var dueYears = await (
-            from session in dbContext.RaceSessions
-            join meeting in dbContext.Meetings on session.MeetingKey equals meeting.MeetingKey
-            where !session.IsClassified && session.DateStart <= cutoff
-            select meeting.Year)
-            .Distinct()
-            .ToListAsync(cancellationToken);
+        var dueYears = await DueYearsAsync(cancellationToken);
 
         if (dueYears.Count == 0 && !await dbContext.RaceSessions.AnyAsync(cancellationToken))
         {
@@ -73,5 +65,42 @@ internal sealed class SeasonIngestionCoordinatorJob(
                     year, result.Error);
             }
         }
+    }
+
+    /// <summary>
+    /// Years with a session due for re-ingestion, by either rule: a race or sprint whose
+    /// expected finish time has passed and is still unclassified, or a race that has not run yet
+    /// but whose qualifying (or Sprint Qualifying) session has — and whose grid has not been
+    /// stored yet. The second rule exists because OpenF1 publishes the grid once qualifying
+    /// finishes, well before the race itself is classified, and re-checking then is what turns a
+    /// projected preview into a confirmed one without waiting for the race to finish.
+    /// </summary>
+    /// <remarks>Internal, not private, so the due-rule can be exercised directly in tests without standing up a Quartz <see cref="IJobExecutionContext"/>.</remarks>
+    internal async Task<List<int>> DueYearsAsync(CancellationToken cancellationToken)
+    {
+        var now = new DateTimeOffset(dateTimeProvider.UtcNow, TimeSpan.Zero);
+        var cutoff = now - TimeSpan.FromMinutes(options.Value.PostSessionBufferMinutes);
+
+        var pastDueYears = await (
+            from session in dbContext.RaceSessions
+            join meeting in dbContext.Meetings on session.MeetingKey equals meeting.MeetingKey
+            where !session.IsClassified && session.DateStart <= cutoff
+            select meeting.Year)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        var qualifyingDueYears = await (
+            from session in dbContext.RaceSessions
+            join meeting in dbContext.Meetings on session.MeetingKey equals meeting.MeetingKey
+            where !session.IsClassified
+                && session.DateStart > now
+                && session.QualifyingDateStart != null
+                && session.QualifyingDateStart <= cutoff
+                && !dbContext.StartingGridEntries.Any(g => g.SessionKey == session.SessionKey)
+            select meeting.Year)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        return pastDueYears.Union(qualifyingDueYears).ToList();
     }
 }

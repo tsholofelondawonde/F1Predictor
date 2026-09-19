@@ -164,6 +164,25 @@ public sealed class RefreshAnalysisCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ClassifiedRaceInAnotherSeason_DoesNotAffectThisSeasonsRegenerationDecision()
+    {
+        using var db = InMemoryDb.Create();
+        await SeasonSeed.SeedNextRaceAsync(db, withGrid: true); // 2026: latest classified session for the season is 10.
+        await SeasonSeed.SeedOtherSeasonClassifiedRaceAsync(db, year: 2025, sessionKey: 900); // Higher key, different season.
+        db.RacePreviewNarratives.Add(ExistingNarrative(gridConfirmed: true, basedOnLatestClassifiedSessionKey: 10));
+        await db.SaveChangesAsync();
+        var (handler, chat) = BuildHandler(db, aiAvailable: true);
+
+        var result = await handler.Handle(new RefreshAnalysisCommand { Year = 2026 }, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.PreviewsGenerated.Should().Be(0);
+        result.Value.Skipped.Should().Be(1);
+        chat.Calls.Should().BeEmpty();
+        db.RacePreviewNarratives.Single().Content.Should().Be("Old content");
+    }
+
+    [Fact]
     public async Task Handle_PreviewGenerationFails_AddsNoteAndDoesNotCountAsGenerated()
     {
         using var db = InMemoryDb.Create();

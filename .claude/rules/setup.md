@@ -75,6 +75,23 @@ header, then point the secret back at the development branch. Until that is done
 next-race page shows "No preview generated yet." and, with no provider configured, offers no
 button to change it.
 
+### AI provider (production)
+
+The analyst chat and generated race previews are now available in production through OpenAI.
+Set the provider and API key as Container Apps secrets and environment variables:
+
+```bash
+az containerapp secret set -n <app> -g <rg> --secrets openai-api-key=<key>
+az containerapp update  -n <app> -g <rg> --set-env-vars \
+  Ai__Provider=OpenAi Ai__OpenAi__ApiKey=secretref:openai-api-key \
+  Ai__Embeddings__Provider=OpenAi
+```
+
+Replace `<app>` with your container app name, `<rg>` with your resource group, and `<key>`
+with your OpenAI API key from the OpenAI dashboard. The secret reference (`secretref:openai-api-key`)
+ensures the key is not stored in plain text in environment variables. A daily cost cap is
+enforced by configuration (`Ai:OpenAi:DailyCostLimitUsd`) to prevent runaway charges.
+
 ### Rehearsing a migration on a Neon branch first
 
 Before running a migration against the shared Neon database by hand (see the rule above), it is

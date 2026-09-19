@@ -47,7 +47,7 @@ public static class DependencyInjection
             .AddDatabase(configuration)
             .AddOpenF1(configuration)
             .AddMachineLearning(configuration)
-            .AddIngestionScheduler(configuration)
+            .AddScheduler(configuration)
             .AddAi(configuration)
             .AddHealthChecks(configuration);
      
@@ -116,33 +116,67 @@ public static class DependencyInjection
     }
 
     /// <summary>
-    /// Registers the Quartz job that keeps a season's data current without a human re-running
-    /// ingest — see <see cref="SeasonIngestionCoordinatorJob"/> for how it decides when to.
+    /// Registers Quartz and its jobs. The container itself — <c>AddQuartz</c> and
+    /// <c>AddQuartzHostedService</c> — and both <c>AddJob</c> registrations are unconditional, so
+    /// <see cref="SeasonIngestionCoordinatorJob"/> can always <c>TriggerJob</c> an
+    /// <see cref="AnalysisRefreshJob"/> run on demand even when that job's own interval trigger
+    /// (or the ingestion coordinator's) is switched off. Only the two *triggers* below are
+    /// conditional:
+    /// <list type="bullet">
+    /// <item><description><see cref="SeasonIngestionCoordinatorJob"/>'s interval trigger — gated
+    /// on <c>IngestionScheduler:Enabled</c>, as before.</description></item>
+    /// <item><description><see cref="AnalysisRefreshJob"/>'s interval-backstop trigger — gated on
+    /// <c>AnalysisRefresh:Enabled</c> <i>and</i> at least one AI channel (chat or embeddings)
+    /// being available, read once here from the same configuration <see cref="AddAi"/> binds
+    /// <see cref="AiOptions"/> from. With <c>Ai:Provider=None</c> and no embeddings provider, this
+    /// trigger is not registered at all — a bare deployment does nothing new.</description></item>
+    /// </list>
     /// </summary>
-    private static IServiceCollection AddIngestionScheduler(this IServiceCollection services, IConfiguration configuration)
+    private static IServiceCollection AddScheduler(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<IngestionSchedulerOptions>(configuration.GetSection(IngestionSchedulerOptions.SectionName));
+        services.Configure<AnalysisRefreshOptions>(configuration.GetSection(AnalysisRefreshOptions.SectionName));
 
-        // The trigger's interval has to be known at schedule-build time below, so it's read
-        // eagerly here in addition to the IOptions binding the job itself uses.
+        // Trigger intervals and gating have to be known at schedule-build time below, so they're
+        // read eagerly here in addition to the IOptions bindings the jobs themselves use.
         var schedulerOptions = configuration.GetSection(IngestionSchedulerOptions.SectionName)
             .Get<IngestionSchedulerOptions>() ?? new IngestionSchedulerOptions();
+        var analysisRefreshOptions = configuration.GetSection(AnalysisRefreshOptions.SectionName)
+            .Get<AnalysisRefreshOptions>() ?? new AnalysisRefreshOptions();
+        var aiOptions = configuration.GetSection(AiOptions.SectionName).Get<AiOptions>() ?? new AiOptions();
 
-        if (!schedulerOptions.Enabled)
-        {
-            return services;
-        }
+        // Mirrors AiCapabilities.ChatAvailable / EmbeddingsAvailable — IAiCapabilities isn't
+        // resolvable yet at this point in service registration, so the same two checks are
+        // repeated directly against the freshly-bound options here.
+        var aiChannelAvailable = aiOptions.Provider is AiProvider.Ollama or AiProvider.OpenAi
+            || aiOptions.Embeddings.Provider == EmbeddingsProvider.OpenAi;
 
         services.AddQuartz(quartz =>
         {
-            var jobKey = new JobKey(nameof(SeasonIngestionCoordinatorJob));
-            quartz.AddJob<SeasonIngestionCoordinatorJob>(job => job.WithIdentity(jobKey));
-            quartz.AddTrigger(trigger => trigger
-                .ForJob(jobKey)
-                .WithSimpleSchedule(schedule => schedule
-                    .WithIntervalInMinutes(schedulerOptions.CoordinatorIntervalMinutes)
-                    .RepeatForever())
-                .StartNow());
+            var ingestionJobKey = new JobKey(nameof(SeasonIngestionCoordinatorJob));
+            quartz.AddJob<SeasonIngestionCoordinatorJob>(job => job.WithIdentity(ingestionJobKey));
+
+            if (schedulerOptions.Enabled)
+            {
+                quartz.AddTrigger(trigger => trigger
+                    .ForJob(ingestionJobKey)
+                    .WithSimpleSchedule(schedule => schedule
+                        .WithIntervalInMinutes(schedulerOptions.CoordinatorIntervalMinutes)
+                        .RepeatForever())
+                    .StartNow());
+            }
+
+            quartz.AddJob<AnalysisRefreshJob>(job => job.WithIdentity(AnalysisRefreshJob.Key));
+
+            if (analysisRefreshOptions.Enabled && aiChannelAvailable)
+            {
+                quartz.AddTrigger(trigger => trigger
+                    .ForJob(AnalysisRefreshJob.Key)
+                    .WithSimpleSchedule(schedule => schedule
+                        .WithIntervalInMinutes(analysisRefreshOptions.IntervalMinutes)
+                        .RepeatForever())
+                    .StartNow());
+            }
         });
         services.AddQuartzHostedService(quartz => quartz.WaitForJobsToComplete = true);
 

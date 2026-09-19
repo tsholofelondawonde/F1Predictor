@@ -57,6 +57,18 @@ internal sealed class SeasonIngestionCoordinatorJob(
                 logger.LogInformation(
                     "Ingestion coordinator: {Year} refreshed ({MeetingsIngested}/{MeetingsFound} weekends ingested).",
                     year, result.Value.MeetingsIngested, result.Value.MeetingsFound);
+
+                // Fire-and-forget: TriggerJob only enqueues the run on Quartz's own thread pool.
+                // Never await AnalysisRefreshJob's handler inline here — a slow chat completion
+                // (up to TimeoutSeconds, no retries) blocking this loop would delay every other
+                // due season behind it, which is exactly the failure mode this split avoids.
+                if (result.Value.ClassifiedSessionKeys.Count > 0 || result.Value.GridStored)
+                {
+                    await context.Scheduler.TriggerJob(
+                        AnalysisRefreshJob.Key,
+                        new JobDataMap { ["year"] = year },
+                        cancellationToken);
+                }
             }
             else
             {

@@ -7,11 +7,11 @@ namespace F1Predictor.Infrastructure.Tests.Ingestion;
 /// <see cref="Infrastructure.Ingestion.SeasonIngestionCoordinatorJob.Execute"/> directly in a
 /// test, without standing up a real Quartz scheduler. Every member the job does not touch throws.
 /// </summary>
-internal sealed class FakeJobExecutionContext : IJobExecutionContext
+internal sealed class FakeJobExecutionContext(IScheduler? scheduler = null) : IJobExecutionContext
 {
     public CancellationToken CancellationToken => CancellationToken.None;
 
-    public IScheduler Scheduler => throw new NotSupportedException();
+    public IScheduler Scheduler => scheduler ?? throw new NotSupportedException();
     public ITrigger Trigger => throw new NotSupportedException();
     public ICalendar? Calendar => throw new NotSupportedException();
     public bool Recovering => false;

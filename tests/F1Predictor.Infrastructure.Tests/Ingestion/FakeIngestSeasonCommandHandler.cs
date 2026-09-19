@@ -12,10 +12,18 @@ internal sealed class FakeIngestSeasonCommandHandler : ICommandHandler<IngestSea
 {
     public List<int> HandledYears { get; } = [];
 
+    /// <summary>
+    /// Overrides the <see cref="IngestSeasonResponse.ClassifiedSessionKeys"/> / <see cref="IngestSeasonResponse.GridStored"/>
+    /// returned for every handled year, so a test can exercise the coordinator's on-demand
+    /// analysis-refresh trigger without a real ingest running behind it.
+    /// </summary>
+    public (IReadOnlyList<int> ClassifiedSessionKeys, bool GridStored) Signal { get; set; } = ([], false);
+
     public Task<Result<IngestSeasonResponse>> Handle(IngestSeasonCommand command, CancellationToken cancellationToken)
     {
         HandledYears.Add(command.Year);
 
-        return Task.FromResult(Result.Success(new IngestSeasonResponse(command.Year, 0, 0, [], [], GridStored: false)));
+        return Task.FromResult(Result.Success(new IngestSeasonResponse(
+            command.Year, 0, 0, [], Signal.ClassifiedSessionKeys, Signal.GridStored)));
     }
 }

@@ -6,6 +6,8 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Moq;
+using Quartz;
 using Xunit;
 
 namespace F1Predictor.Infrastructure.Tests.Ingestion;
@@ -251,5 +253,86 @@ public sealed class SeasonIngestionCoordinatorJobTests
         await Job(db, ingestHandler: ingestHandler).Execute(new FakeJobExecutionContext());
 
         ingestHandler.HandledYears.Should().ContainSingle().Which.Should().Be(2026);
+    }
+
+    // --- The on-demand analysis-refresh trigger (Task 16) ---
+
+    [Fact]
+    public async Task Execute_IngestReportsClassifiedSession_TriggersAnalysisRefreshOnDemand()
+    {
+        using var db = CreateDb();
+        AddMeetingAndSession(db, 2026, 20, new RaceSession
+        {
+            SessionKey = 20,
+            MeetingKey = 2,
+            SessionName = "Race",
+            SessionType = "Race",
+            DateStart = Now.AddMinutes(-(BufferMinutes + 1)),
+            IsClassified = false
+        });
+        await db.SaveChangesAsync();
+        var ingestHandler = new FakeIngestSeasonCommandHandler { Signal = ([20], GridStored: false) };
+        var scheduler = new Mock<IScheduler>();
+
+        await Job(db, ingestHandler: ingestHandler).Execute(new FakeJobExecutionContext(scheduler.Object));
+
+        // The critical ordering constraint: the coordinator only ever enqueues the refresh via
+        // TriggerJob — it must never await AnalysisRefreshJob's own handler inline, or a slow
+        // chat completion would block every other due season behind it in this same loop.
+        scheduler.Verify(s => s.TriggerJob(
+            AnalysisRefreshJob.Key,
+            It.Is<JobDataMap>(map => (int)map["year"] == 2026),
+            It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task Execute_IngestReportsGridStored_TriggersAnalysisRefreshOnDemand()
+    {
+        using var db = CreateDb();
+        AddMeetingAndSession(db, 2026, 20, new RaceSession
+        {
+            SessionKey = 20,
+            MeetingKey = 2,
+            SessionName = "Race",
+            SessionType = "Race",
+            DateStart = Now.AddDays(1),
+            QualifyingDateStart = Now.AddMinutes(-(BufferMinutes + 1)),
+            IsClassified = false
+        });
+        await db.SaveChangesAsync();
+        var ingestHandler = new FakeIngestSeasonCommandHandler { Signal = ([], GridStored: true) };
+        var scheduler = new Mock<IScheduler>();
+
+        await Job(db, ingestHandler: ingestHandler).Execute(new FakeJobExecutionContext(scheduler.Object));
+
+        scheduler.Verify(s => s.TriggerJob(
+            AnalysisRefreshJob.Key,
+            It.IsAny<JobDataMap>(),
+            It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task Execute_IngestReportsNoSignal_DoesNotTriggerAnalysisRefresh()
+    {
+        using var db = CreateDb();
+        AddMeetingAndSession(db, 2026, 10, new RaceSession
+        {
+            SessionKey = 10,
+            MeetingKey = 1,
+            SessionName = "Race",
+            SessionType = "Race",
+            DateStart = Now.AddMinutes(-(BufferMinutes + 1)),
+            IsClassified = false
+        });
+        await db.SaveChangesAsync();
+
+        // Signal defaults to (empty, false). FakeJobExecutionContext() with no scheduler throws
+        // NotSupportedException the moment context.Scheduler is touched, so a clean run is itself
+        // the assertion: no signal means Execute must never reach context.Scheduler.
+        Func<Task> act = () => Job(db).Execute(new FakeJobExecutionContext());
+
+        await act.Should().NotThrowAsync();
     }
 }

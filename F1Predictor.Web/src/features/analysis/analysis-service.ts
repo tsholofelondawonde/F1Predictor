@@ -5,6 +5,7 @@ import type {
   ChatTurn,
   DriverExplanationResponse,
   RacePreviewResponse,
+  RefreshAnalysisResponse,
 } from "@/features/analysis/analysis-types";
 import { api } from "@/shared/lib/api";
 import { ApiError } from "@/shared/lib/api-error";
@@ -22,6 +23,8 @@ export const explainDriver = (year: number, driverNumber: number) =>
   api.get<DriverExplanationResponse>(`/seasons/${year}/next-race/drivers/${driverNumber}/explanation`).then((r) => r.data);
 export const explainRaceDriver = (sessionKey: number, driverNumber: number) =>
   api.get<DriverExplanationResponse>(`/races/${sessionKey}/predictions/${driverNumber}/explanation`).then((r) => r.data);
+export const refreshAnalysis = (year: number) =>
+  api.post<RefreshAnalysisResponse>("/admin/analysis/refresh", null, { params: { year } }).then((r) => r.data);
 
 const EVENT_TYPES: readonly AnalystEventType[] = ["status", "delta", "done", "error"];
 

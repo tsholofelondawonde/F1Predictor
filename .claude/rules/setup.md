@@ -89,8 +89,9 @@ az containerapp update  -n <app> -g <rg> --set-env-vars \
 
 Replace `<app>` with your container app name, `<rg>` with your resource group, and `<key>`
 with your OpenAI API key from the OpenAI dashboard. The secret reference (`secretref:openai-api-key`)
-ensures the key is not stored in plain text in environment variables. A daily cost cap is
-enforced by configuration (`Ai:OpenAi:DailyCostLimitUsd`) to prevent runaway charges.
+ensures the key is not stored in plain text in environment variables. Request usage is limited
+by configuration (`Ai:DailyChatRequestCap`, default 500) to 500 analyst requests per 24 hours
+globally.
 
 ### Rehearsing a migration on a Neon branch first
 

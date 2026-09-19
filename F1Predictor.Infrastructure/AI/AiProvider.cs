@@ -4,6 +4,6 @@ internal enum AiProvider
 {
     None,
     Ollama,
-    /// <summary>Accepted by configuration, implemented in stage 4. Fails fast at startup until then.</summary>
+    /// <summary>Hosted chat via the OpenAI SDK. Fails fast at startup without <c>Ai:OpenAi:ApiKey</c>.</summary>
     OpenAi
 }

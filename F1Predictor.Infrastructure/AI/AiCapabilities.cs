@@ -9,16 +9,16 @@ internal sealed class AiCapabilities(IOptions<AiOptions> options) : IAiCapabilit
 
     public bool ChatAvailable => _options.Provider is AiProvider.Ollama or AiProvider.OpenAi;
 
-    public bool EmbeddingsAvailable => false;
+    public bool EmbeddingsAvailable => _options.Embeddings.Provider == EmbeddingsProvider.OpenAi;
 
     public string Provider => _options.Provider.ToString();
 
     public string? Model => _options.Provider switch
     {
         AiProvider.Ollama => _options.Ollama.Model,
-        AiProvider.OpenAi => _options.OpenAi.Model,
+        AiProvider.OpenAi => _options.OpenAi.ChatModel,
         _ => null
     };
 
-    public string? EmbeddingModel => null;
+    public string? EmbeddingModel => EmbeddingsAvailable ? _options.Embeddings.Model : null;
 }

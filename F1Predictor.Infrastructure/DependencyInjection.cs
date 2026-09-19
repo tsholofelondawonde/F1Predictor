@@ -156,13 +156,22 @@ public static class DependencyInjection
     /// </summary>
     internal static IServiceCollection AddAi(this IServiceCollection services, IConfiguration configuration)
     {
-        services.Configure<AiOptions>(configuration.GetSection(AiOptions.SectionName));
+        services.AddOptions<AiOptions>()
+            .Bind(configuration.GetSection(AiOptions.SectionName))
+            .Validate(
+                o => o.Provider != AiProvider.OpenAi || !string.IsNullOrWhiteSpace(o.OpenAi.ApiKey),
+                "Ai:OpenAi:ApiKey is required when Ai:Provider is OpenAi.")
+            .Validate(
+                o => o.Embeddings.Provider != EmbeddingsProvider.OpenAi || !string.IsNullOrWhiteSpace(o.OpenAi.ApiKey),
+                "Ai:OpenAi:ApiKey is required when Ai:Embeddings:Provider is OpenAi.")
+            .ValidateOnStart();
+
         services.AddSingleton<IAiCapabilities, AiCapabilities>();
 
         var options = configuration.GetSection(AiOptions.SectionName).Get<AiOptions>() ?? new AiOptions();
 
         services.AddOllamaHttpClient(options);
-        services.AddChatClientPipeline(options);
+        services.AddChatAndEmbeddingsPipeline(options);
 
         if (options.Provider == AiProvider.Ollama)
         {
@@ -246,18 +255,21 @@ public static class DependencyInjection
         });
     }
 
-    private static void AddChatClientPipeline(this IServiceCollection services, AiOptions options)
+    private static void AddChatAndEmbeddingsPipeline(this IServiceCollection services, AiOptions options)
     {
+        // Built once, shared by chat and embeddings when either channel uses OpenAi — a null
+        // ApiKey means neither channel selected OpenAi (options validation above would already
+        // have failed startup otherwise), so the switches below never dereference a null client.
+        OpenAIClient? openAiClient = !string.IsNullOrWhiteSpace(options.OpenAi.ApiKey)
+            ? new OpenAIClient(new ApiKeyCredential(options.OpenAi.ApiKey), BuildOpenAiClientOptions(options))
+            : null;
+
         services.AddChatClient(sp => options.Provider switch
             {
                 AiProvider.Ollama => new OllamaApiClient(
                     sp.GetRequiredService<IHttpClientFactory>().CreateClient(OllamaHealthCheck.HttpClientName),
                     options.Ollama.Model),
-                AiProvider.OpenAi => new OpenAIClient(
-                        new ApiKeyCredential(string.IsNullOrWhiteSpace(options.OpenAi.ApiKey) ? "unused" : options.OpenAi.ApiKey),
-                        BuildOpenAiClientOptions(options))
-                    .GetChatClient(options.OpenAi.Model)
-                    .AsIChatClient(),
+                AiProvider.OpenAi => openAiClient!.GetChatClient(options.OpenAi.ChatModel).AsIChatClient(),
                 _ => new UnavailableChatClient()
             })
             // ChatClientBuilder composes first-added-outermost, so a request runs
@@ -269,6 +281,7 @@ public static class DependencyInjection
             .ConfigureOptions(chat =>
             {
                 chat.Temperature ??= options.Temperature;
+                chat.MaxOutputTokens ??= options.MaxOutputTokens;
 
                 if (options.Provider == AiProvider.Ollama)
                 {
@@ -283,6 +296,14 @@ public static class DependencyInjection
                 invoker.MaximumIterationsPerRequest = options.MaxToolIterations;
                 // The seven tools all query through one scoped DbContext, which is not thread-safe.
                 invoker.AllowConcurrentInvocation = false;
+            })
+            .UseLogging()
+            .UseOpenTelemetry();
+
+        services.AddEmbeddingGenerator(_ => options.Embeddings.Provider switch
+            {
+                EmbeddingsProvider.OpenAi => openAiClient!.GetEmbeddingClient(options.Embeddings.Model).AsIEmbeddingGenerator(),
+                _ => new UnavailableEmbeddingGenerator()
             })
             .UseLogging()
             .UseOpenTelemetry();

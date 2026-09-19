@@ -69,7 +69,8 @@ public sealed class AiRegistrationTests
     {
         using var provider = Build(
             new("Ai:Provider", "OpenAi"),
-            new("Ai:OpenAi:Model", "ai/llama3.2"),
+            new("Ai:OpenAi:ApiKey", "sk-test"),
+            new("Ai:OpenAi:ChatModel", "ai/llama3.2"),
             new("Ai:OpenAi:Endpoint", "http://localhost:12434/engines/llama.cpp/v1"));
 
         var capabilities = provider.GetRequiredService<IAiCapabilities>();
@@ -85,13 +86,51 @@ public sealed class AiRegistrationTests
     {
         using var provider = Build(
             new("Ai:Provider", "OpenAi"),
-            new("Ai:OpenAi:Model", "gpt-4o-mini"));
+            new("Ai:OpenAi:ApiKey", "sk-test"),
+            new("Ai:OpenAi:ChatModel", "gpt-5-mini"));
 
         var capabilities = provider.GetRequiredService<IAiCapabilities>();
 
         capabilities.ChatAvailable.Should().BeTrue();
-        capabilities.Model.Should().Be("gpt-4o-mini");
+        capabilities.Model.Should().Be("gpt-5-mini");
         provider.GetRequiredService<IChatClient>().Should().NotBeNull();
+    }
+
+    [Fact]
+    public void AddAi_EmbeddingsIndependentOfChatProvider_OllamaChatWithOpenAiEmbeddings()
+    {
+        using var provider = Build(
+            new("Ai:Provider", "Ollama"),
+            new("Ai:Embeddings:Provider", "OpenAi"),
+            new("Ai:Embeddings:Model", "text-embedding-3-small"),
+            new("Ai:OpenAi:ApiKey", "sk-test"));
+
+        var capabilities = provider.GetRequiredService<IAiCapabilities>();
+
+        capabilities.ChatAvailable.Should().BeTrue();
+        capabilities.Provider.Should().Be("Ollama");
+        capabilities.EmbeddingsAvailable.Should().BeTrue();
+        capabilities.EmbeddingModel.Should().Be("text-embedding-3-small");
+        provider.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>().Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task AddAi_NoEmbeddingsConfigured_GeneratorThrowsOnUse()
+    {
+        using var provider = Build();
+        var generator = provider.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>();
+
+        InvalidOperationException? thrown = null;
+        try
+        {
+            await generator.GenerateAsync(["hello"]);
+        }
+        catch (InvalidOperationException ex)
+        {
+            thrown = ex;
+        }
+
+        thrown.Should().NotBeNull();
     }
 
     [Fact]

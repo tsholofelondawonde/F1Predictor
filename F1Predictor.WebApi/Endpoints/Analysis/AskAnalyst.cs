@@ -41,6 +41,7 @@ internal sealed class AskAnalyst : IEndpoint
         .Produces(StatusCodes.Status200OK, contentType: "text/event-stream")
         .ProducesProblem(StatusCodes.Status400BadRequest)
         .RequireApiKey()
-        .RequireRateLimiting(RateLimiterPolicies.Analyst);
+        .RequireRateLimiting(RateLimiterPolicies.Analyst)
+        .RequireRateLimiting(RateLimiterPolicies.AnalystDaily);
     }
 }

@@ -11,6 +11,8 @@ internal sealed class AiOptions
 
     public OpenAiOptions OpenAi { get; set; } = new();
 
+    public EmbeddingsOptions Embeddings { get; set; } = new();
+
     /// <summary>Per-request HTTP timeout. No retries: a 60 s generation retried is worse than a failure.</summary>
     public int TimeoutSeconds { get; set; } = 120;
 
@@ -18,6 +20,9 @@ internal sealed class AiOptions
     public int MaxToolIterations { get; set; } = 6;
 
     public float Temperature { get; set; } = 0.2f;
+
+    /// <summary>Cost guard now that tokens cost money on the OpenAi path.</summary>
+    public int MaxOutputTokens { get; set; } = 800;
 
     internal sealed class OllamaOptions
     {
@@ -37,10 +42,23 @@ internal sealed class AiOptions
         /// Model Runner endpoint.</summary>
         public string? Endpoint { get; set; }
 
-        /// <summary>Required by hosted OpenAI; an OpenAI-compatible local server typically
-        /// ignores it, but the SDK still needs a non-null credential.</summary>
+        /// <summary>Secret — user secrets locally, a Container Apps secret in prod. Never appsettings.
+        /// An OpenAI-compatible local server typically ignores it, but the SDK still needs a
+        /// non-null credential.</summary>
         public string ApiKey { get; set; } = string.Empty;
 
-        public string Model { get; set; } = "gpt-4o-mini";
+        public string ChatModel { get; set; } = "gpt-5-mini";
+    }
+
+    internal sealed class EmbeddingsOptions
+    {
+        /// <summary>Independent of <see cref="Provider"/> — dev can run Ollama chat + OpenAi embeddings.</summary>
+        public EmbeddingsProvider Provider { get; set; } = EmbeddingsProvider.None;
+
+        public string Model { get; set; } = "text-embedding-3-small";
+
+        /// <summary>Must equal the pgvector column width once that lands. Not yet validated against
+        /// a column — there is no vector column until the embeddings-index work ships.</summary>
+        public int Dimensions { get; set; } = 1536;
     }
 }

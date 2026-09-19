@@ -102,6 +102,12 @@ builder.Services.AddRateLimiter(options =>
         RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             factory: _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+
+    var dailyChatRequestCap = builder.Configuration.GetValue("Ai:DailyChatRequestCap", 500);
+    options.AddPolicy(RateLimiterPolicies.AnalystDaily, _ =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: "global",
+            factory: _ => new FixedWindowRateLimiterOptions { PermitLimit = dailyChatRequestCap, Window = TimeSpan.FromHours(24), QueueLimit = 0 }));
 });
 
 builder.Services

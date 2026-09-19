@@ -201,6 +201,7 @@ public static class DependencyInjection
             .ValidateOnStart();
 
         services.AddSingleton<IAiCapabilities, AiCapabilities>();
+        services.AddScoped<IRaceEmbeddingIndex, RaceEmbeddingIndex>();
 
         var options = configuration.GetSection(AiOptions.SectionName).Get<AiOptions>() ?? new AiOptions();
 
@@ -369,6 +370,9 @@ public static class DependencyInjection
             {
                 npgsqlOptions.MigrationsHistoryTable(HistoryRepository.DefaultTableName, Schemas.Default);
                 npgsqlOptions.CommandTimeout(60);
+                // Enables the Pgvector `vector` column type mapping (RaceEmbeddingRow.Embedding).
+                // Miss this and the vector column round-trips as an opaque/unmapped type.
+                npgsqlOptions.UseVector();
             });
             options.EnableSensitiveDataLogging(false)
                    .EnableDetailedErrors(false);

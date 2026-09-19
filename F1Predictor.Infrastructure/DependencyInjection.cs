@@ -1,3 +1,6 @@
+using System.ClientModel;
+using System.ClientModel.Primitives;
+using System.Net.Http.Headers;
 using F1Predictor.Application.Abstractions.AI;
 using F1Predictor.Application.Abstractions.Data;
 using F1Predictor.Application.Abstractions.Legacy;
@@ -19,6 +22,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using OllamaSharp;
+using OpenAI;
 using Quartz;
 using SharedKernel;
 
@@ -157,21 +161,17 @@ public static class DependencyInjection
 
         var options = configuration.GetSection(AiOptions.SectionName).Get<AiOptions>() ?? new AiOptions();
 
-        // Fail at startup, not at first IChatClient resolution: outside Development nothing may
-        // resolve IChatClient at boot, so a lazy throw would let a misconfigured app start clean
-        // and only break on first use.
-        if (options.Provider == AiProvider.OpenAi)
-        {
-            throw new InvalidOperationException(
-                "Ai:Provider=OpenAi is not implemented yet (stage 4). Use None or Ollama.");
-        }
-
         services.AddOllamaHttpClient(options);
         services.AddChatClientPipeline(options);
 
         if (options.Provider == AiProvider.Ollama)
         {
             services.AddHealthChecks().AddCheck<OllamaHealthCheck>("ai", failureStatus: HealthStatus.Degraded, tags: ["ai"]);
+        }
+        else if (options.Provider == AiProvider.OpenAi)
+        {
+            services.AddOpenAiHttpClient(options);
+            services.AddHealthChecks().AddCheck<OpenAiHealthCheck>("ai", failureStatus: HealthStatus.Degraded, tags: ["ai"]);
         }
 
         return services;
@@ -197,6 +197,55 @@ public static class DependencyInjection
         });
     }
 
+    /// <summary>
+    /// The OpenAI SDK client manages its own <c>HttpClient</c> with its own defaults (a 100 s
+    /// network timeout and its own retry policy) — <see cref="AddOpenAiHttpClient"/>'s named
+    /// client is only used by the health check. Without this, the chat client would silently
+    /// ignore <see cref="AiOptions.TimeoutSeconds"/> and retry a hung generation, both contrary
+    /// to the no-retry-on-a-slow-generation stance documented on <see cref="AiOptions"/>.
+    /// </summary>
+    private static OpenAIClientOptions BuildOpenAiClientOptions(AiOptions options)
+    {
+        var clientOptions = new OpenAIClientOptions
+        {
+            NetworkTimeout = TimeSpan.FromSeconds(options.TimeoutSeconds),
+            RetryPolicy = new ClientRetryPolicy(maxRetries: 0)
+        };
+
+        if (!string.IsNullOrWhiteSpace(options.OpenAi.Endpoint))
+        {
+            clientOptions.Endpoint = new Uri(options.OpenAi.Endpoint);
+        }
+
+        return clientOptions;
+    }
+
+    private static void AddOpenAiHttpClient(this IServiceCollection services, AiOptions options)
+    {
+        services.AddHttpClient(OpenAiHealthCheck.HttpClientName, client =>
+        {
+            if (!string.IsNullOrWhiteSpace(options.OpenAi.Endpoint))
+            {
+#pragma warning disable S1075 // see AddOllamaHttpClient above — same trailing-slash reasoning.
+                client.BaseAddress = new Uri(options.OpenAi.Endpoint.TrimEnd('/') + "/");
+#pragma warning restore S1075
+            }
+            else
+            {
+#pragma warning disable S1075 // OpenAI's own default base address, not a project-specific hardcoded path.
+                client.BaseAddress = new Uri("https://api.openai.com/v1/");
+#pragma warning restore S1075
+            }
+
+            if (!string.IsNullOrWhiteSpace(options.OpenAi.ApiKey))
+            {
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", options.OpenAi.ApiKey);
+            }
+
+            client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+        });
+    }
+
     private static void AddChatClientPipeline(this IServiceCollection services, AiOptions options)
     {
         services.AddChatClient(sp => options.Provider switch
@@ -204,10 +253,15 @@ public static class DependencyInjection
                 AiProvider.Ollama => new OllamaApiClient(
                     sp.GetRequiredService<IHttpClientFactory>().CreateClient(OllamaHealthCheck.HttpClientName),
                     options.Ollama.Model),
+                AiProvider.OpenAi => new OpenAIClient(
+                        new ApiKeyCredential(string.IsNullOrWhiteSpace(options.OpenAi.ApiKey) ? "unused" : options.OpenAi.ApiKey),
+                        BuildOpenAiClientOptions(options))
+                    .GetChatClient(options.OpenAi.Model)
+                    .AsIChatClient(),
                 _ => new UnavailableChatClient()
             })
             // ChatClientBuilder composes first-added-outermost, so a request runs
-            // ConfigureOptions -> FunctionInvocation -> Logging -> OpenTelemetry -> Ollama:
+            // ConfigureOptions -> FunctionInvocation -> Logging -> OpenTelemetry -> the provider:
             // the sampling defaults are applied once, then the tool-invocation loop sits
             // OUTSIDE logging and tracing, so each model round-trip inside the loop is logged
             // and spanned on its own — which is the order M.E.AI recommends, and why a
@@ -215,8 +269,14 @@ public static class DependencyInjection
             .ConfigureOptions(chat =>
             {
                 chat.Temperature ??= options.Temperature;
-                chat.AdditionalProperties ??= [];
-                chat.AdditionalProperties.TryAdd("num_ctx", options.Ollama.ContextLength);
+
+                if (options.Provider == AiProvider.Ollama)
+                {
+                    // num_ctx is an Ollama-only sampling option; it has no meaning to an
+                    // OpenAI-compatible endpoint, so it's only ever set on that path.
+                    chat.AdditionalProperties ??= [];
+                    chat.AdditionalProperties.TryAdd("num_ctx", options.Ollama.ContextLength);
+                }
             })
             .UseFunctionInvocation(configure: invoker =>
             {

@@ -65,11 +65,33 @@ public sealed class AiRegistrationTests
     }
 
     [Fact]
-    public void AddAi_OpenAiConfigured_FailsFastUntilStage4()
+    public void AddAi_OpenAiConfigured_ReportsModelAndResolvesClient()
     {
-        var act = () => Build(new KeyValuePair<string, string?>("Ai:Provider", "OpenAi"));
+        using var provider = Build(
+            new("Ai:Provider", "OpenAi"),
+            new("Ai:OpenAi:Model", "ai/llama3.2"),
+            new("Ai:OpenAi:Endpoint", "http://localhost:12434/engines/llama.cpp/v1"));
 
-        act.Should().Throw<InvalidOperationException>().WithMessage("*OpenAi*not implemented*");
+        var capabilities = provider.GetRequiredService<IAiCapabilities>();
+
+        capabilities.ChatAvailable.Should().BeTrue();
+        capabilities.Provider.Should().Be("OpenAi");
+        capabilities.Model.Should().Be("ai/llama3.2");
+        provider.GetRequiredService<IChatClient>().Should().NotBeNull();
+    }
+
+    [Fact]
+    public void AddAi_OpenAiConfigured_NoEndpointStillResolvesClient()
+    {
+        using var provider = Build(
+            new("Ai:Provider", "OpenAi"),
+            new("Ai:OpenAi:Model", "gpt-4o-mini"));
+
+        var capabilities = provider.GetRequiredService<IAiCapabilities>();
+
+        capabilities.ChatAvailable.Should().BeTrue();
+        capabilities.Model.Should().Be("gpt-4o-mini");
+        provider.GetRequiredService<IChatClient>().Should().NotBeNull();
     }
 
     [Fact]

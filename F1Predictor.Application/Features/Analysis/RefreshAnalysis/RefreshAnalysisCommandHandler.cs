@@ -2,6 +2,7 @@ using F1Predictor.Application.Abstractions.AI;
 using F1Predictor.Application.Abstractions.Data;
 using F1Predictor.Application.Abstractions.Messaging;
 using F1Predictor.Application.Features.Analysis.GenerateRacePreview;
+using F1Predictor.Application.Features.Analysis.IndexRace;
 using F1Predictor.Application.Features.Predictions.PreviewNextRace;
 using Microsoft.EntityFrameworkCore;
 using SharedKernel;
@@ -11,19 +12,23 @@ namespace F1Predictor.Application.Features.Analysis.RefreshAnalysis;
 /// <summary>
 /// Re-generates the AI race preview for whichever seasons' next Grand Prix has moved on since it
 /// was last written — a real grid replacing a projected one, or a newer race being classified —
-/// so a preview refresh does not depend on a human noticing and pressing the button. Called by
+/// and indexes every classified, non-sprint race in scope for similarity search, so neither a
+/// preview refresh nor a race index depends on a human noticing and pressing a button. Called by
 /// the ingestion coordinator (see <c>SeasonIngestionCoordinatorJob</c>) right after a run that
 /// stored a grid or classified a race.
 /// </summary>
 /// <remarks>
-/// Preview step only: <see cref="RefreshAnalysisResponse.RacesIndexed"/> stays 0 here. A later
-/// task extends this handler to also index newly classified races for semantic search.
-/// Orchestrates by calling the existing <see cref="GenerateRacePreviewCommand"/> handler rather
-/// than duplicating its generation logic.
+/// The two steps are independent: chat and embeddings are separate <see cref="IAiCapabilities"/>
+/// switches, so one being off does not skip the other. Orchestrates by calling the existing
+/// <see cref="GenerateRacePreviewCommand"/> and <see cref="IndexRaceCommand"/> handlers rather
+/// than duplicating either's logic. Indexing needs no staleness check of its own —
+/// <see cref="IndexRaceCommandHandler"/>'s own content-hash short-circuit already makes it cheap
+/// to call for every classified race on every refresh.
 /// </remarks>
 internal sealed class RefreshAnalysisCommandHandler(
     IApplicationDbContext context,
     ICommandHandler<GenerateRacePreviewCommand, RacePreviewResponse> generatePreview,
+    ICommandHandler<IndexRaceCommand, IndexRaceResponse> indexRace,
     IAiCapabilities ai)
     : ICommandHandler<RefreshAnalysisCommand, RefreshAnalysisResponse>
 {
@@ -40,28 +45,68 @@ internal sealed class RefreshAnalysisCommandHandler(
         if (!ai.ChatAvailable)
         {
             notes.Add("Chat unavailable — preview refresh skipped for all years.");
-            return Result.Success(new RefreshAnalysisResponse(0, RacesIndexed: 0, years.Count, notes));
+            skipped = years.Count;
         }
-
-        foreach (var seasonYear in years)
+        else
         {
-            var (outcome, errorCode) = await RefreshYearAsync(seasonYear, cancellationToken);
-
-            switch (outcome)
+            foreach (var seasonYear in years)
             {
-                case RefreshOutcome.Generated:
-                    generated++;
-                    break;
-                case RefreshOutcome.Skipped:
-                    skipped++;
-                    break;
-                case RefreshOutcome.Failed:
-                    notes.Add($"{seasonYear}: preview generation failed ({errorCode}).");
-                    break;
+                var (outcome, errorCode) = await RefreshYearAsync(seasonYear, cancellationToken);
+
+                switch (outcome)
+                {
+                    case RefreshOutcome.Generated:
+                        generated++;
+                        break;
+                    case RefreshOutcome.Skipped:
+                        skipped++;
+                        break;
+                    case RefreshOutcome.Failed:
+                        notes.Add($"{seasonYear}: preview generation failed ({errorCode}).");
+                        break;
+                }
             }
         }
 
-        return Result.Success(new RefreshAnalysisResponse(generated, RacesIndexed: 0, skipped, notes));
+        var indexed = await IndexClassifiedRacesAsync(years, ai.EmbeddingsAvailable, notes, cancellationToken);
+
+        return Result.Success(new RefreshAnalysisResponse(generated, indexed, skipped, notes));
+    }
+
+    /// <summary>
+    /// Indexes every classified, non-sprint race across <paramref name="years"/> — sprints are
+    /// never previewed or explained either, per the ml-pipeline rule that a sprint's shorter
+    /// distance and different points scale make it a poor fit for anything the models or the
+    /// analyst reason about. Cheap to call unconditionally: <see cref="IndexRaceCommandHandler"/>
+    /// skips the embedding call itself for a race whose fact sheet has not changed.
+    /// </summary>
+    private async Task<int> IndexClassifiedRacesAsync(
+        IReadOnlyList<int> years, bool embeddingsAvailable, List<string> notes, CancellationToken cancellationToken)
+    {
+        if (!embeddingsAvailable)
+        {
+            notes.Add("Embeddings unavailable — race indexing skipped.");
+            return 0;
+        }
+
+        var sessionKeys = await (
+            from session in context.RaceSessions
+            join meeting in context.Meetings on session.MeetingKey equals meeting.MeetingKey
+            where session.IsClassified && !session.IsSprint && years.Contains(meeting.Year)
+            select session.SessionKey)
+            .ToListAsync(cancellationToken);
+
+        var indexed = 0;
+        foreach (var sessionKey in sessionKeys)
+        {
+            var result = await indexRace.Handle(new IndexRaceCommand { SessionKey = sessionKey }, cancellationToken);
+            if (result.IsSuccess && result.Value.Reindexed)
+            {
+                indexed++;
+            }
+        }
+
+        return indexed;
     }
 
     /// <summary>

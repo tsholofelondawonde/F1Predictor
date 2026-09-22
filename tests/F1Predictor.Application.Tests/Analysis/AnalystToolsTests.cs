@@ -2,6 +2,8 @@ using System.Text.Json;
 using F1Predictor.Application.Features.Analysis;
 using F1Predictor.Application.Features.Analysis.ExplainDriverPrediction;
 using F1Predictor.Application.Features.Analysis.ExplainRacePrediction;
+using F1Predictor.Application.Features.Analysis.FindSimilarRaces;
+using F1Predictor.Application.Features.Analysis.SearchRaces;
 using F1Predictor.Application.Features.Championship.GetForecast;
 using F1Predictor.Application.Features.Championship.GetScenarios;
 using F1Predictor.Application.Features.Championship.GetStandings;
@@ -32,7 +34,9 @@ public sealed class AnalystToolsTests
         new StubQueryHandler<GetTitleScenariosQuery, TitleScenariosResponse>(),
         new StubQueryHandler<GetSeasonRacesQuery, IReadOnlyList<SeasonRaceResponse>>(),
         new StubQueryHandler<PredictRaceQuery, RacePredictionsResponse>(),
-        new StubQueryHandler<ExplainRacePredictionQuery, DriverExplanationResponse>());
+        new StubQueryHandler<ExplainRacePredictionQuery, DriverExplanationResponse>(),
+        new StubQueryHandler<SearchRacesQuery, SimilarRacesResponse>(),
+        new FakeRaceEmbeddingIndex());
 
     private static AnalystTools ToolsWithRealExplainRace(ApplicationDbContext db, FakeChatClient chat) => new(
         new StubQueryHandler<PreviewNextRaceQuery, NextRacePreviewResponse>(),
@@ -44,7 +48,9 @@ public sealed class AnalystToolsTests
         new StubQueryHandler<PredictRaceQuery, RacePredictionsResponse>(),
         new ExplainRacePredictionQueryHandler(db, new FakeRacePredictor(), new FakeAiCapabilities(chatAvailable: true), chat,
             new ServiceCollection().AddHybridCache().Services.BuildServiceProvider().GetRequiredService<HybridCache>(),
-            NullLogger<ExplainRacePredictionQueryHandler>.Instance));
+            NullLogger<ExplainRacePredictionQueryHandler>.Instance),
+        new StubQueryHandler<SearchRacesQuery, SimilarRacesResponse>(),
+        new FakeRaceEmbeddingIndex());
 
     // The tool returns the contribution table only, so it must not spend a second LLM
     // generation on a narrative it then discards — inside a chat the provider is by

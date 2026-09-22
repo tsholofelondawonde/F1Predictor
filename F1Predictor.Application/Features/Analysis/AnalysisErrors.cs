@@ -43,4 +43,9 @@ internal static class AnalysisErrors
         "Analysis.DriverNotInRace",
         $"Car {driverNumber} has no recorded result for session {sessionKey}.",
         "That driver did not take part in this race.");
+
+    public static Error NotIndexed(int sessionKey) => Error.NotFound(
+        "Analysis.NotIndexed",
+        $"Session {sessionKey} has not been indexed for similarity search.",
+        "This race hasn't been indexed for similarity search yet.");
 }

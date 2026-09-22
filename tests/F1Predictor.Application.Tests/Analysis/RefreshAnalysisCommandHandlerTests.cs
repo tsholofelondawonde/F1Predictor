@@ -1,4 +1,5 @@
 using F1Predictor.Application.Features.Analysis.GenerateRacePreview;
+using F1Predictor.Application.Features.Analysis.IndexRace;
 using F1Predictor.Application.Features.Analysis.RefreshAnalysis;
 using F1Predictor.Application.Tests.Fakes;
 using F1Predictor.Domain.Analysis.Entities;
@@ -14,17 +15,21 @@ namespace F1Predictor.Application.Tests.Analysis;
 
 public sealed class RefreshAnalysisCommandHandlerTests
 {
-    private static (RefreshAnalysisCommandHandler Handler, FakeChatClient Chat) BuildHandler(
-        ApplicationDbContext db, bool aiAvailable, string replyText = "# Headline\n\nBody.")
+    private static (RefreshAnalysisCommandHandler Handler, FakeChatClient Chat, FakeEmbeddingGenerator Embeddings, FakeRaceEmbeddingIndex Index) BuildHandler(
+        ApplicationDbContext db, bool aiAvailable, bool embeddingsAvailable = false, string replyText = "# Headline\n\nBody.")
     {
-        var ai = new FakeAiCapabilities(aiAvailable);
+        var ai = new FakeAiCapabilities(aiAvailable, embeddingsAvailable: embeddingsAvailable);
         var chat = new FakeChatClient { ReplyText = replyText };
+        var clock = new FakeDateTimeProvider();
+        var embeddings = new FakeEmbeddingGenerator();
+        var index = new FakeRaceEmbeddingIndex();
         var generatePreview = new GenerateRacePreviewCommandHandler(
             db, new FakeRacePredictor(), ai, chat,
             new ServiceCollection().AddHybridCache().Services.BuildServiceProvider().GetRequiredService<HybridCache>(),
-            new FakeDateTimeProvider(), NullLogger<GenerateRacePreviewCommandHandler>.Instance);
+            clock, NullLogger<GenerateRacePreviewCommandHandler>.Instance);
+        var indexRace = new IndexRaceCommandHandler(db, ai, embeddings, index, clock);
 
-        return (new RefreshAnalysisCommandHandler(db, generatePreview, ai), chat);
+        return (new RefreshAnalysisCommandHandler(db, generatePreview, indexRace, ai), chat, embeddings, index);
     }
 
     private static RacePreviewNarrative ExistingNarrative(bool gridConfirmed, int? basedOnLatestClassifiedSessionKey) => new()
@@ -43,7 +48,7 @@ public sealed class RefreshAnalysisCommandHandlerTests
     {
         using var db = InMemoryDb.Create();
         await SeasonSeed.SeedNextRaceAsync(db, withGrid: true);
-        var (handler, chat) = BuildHandler(db, aiAvailable: false);
+        var (handler, chat, _, _) = BuildHandler(db, aiAvailable: false);
 
         var result = await handler.Handle(new RefreshAnalysisCommand(), CancellationToken.None);
 
@@ -67,7 +72,7 @@ public sealed class RefreshAnalysisCommandHandlerTests
         db.Meetings.Add(new Meeting { MeetingKey = 100, Year = 2027, MeetingName = "Future season opener", CircuitShortName = "Z", CountryName = "Z", DateStart = DateTimeOffset.UtcNow.AddDays(200) });
         await db.SaveChangesAsync();
 
-        var (handler, _) = BuildHandler(db, aiAvailable: true);
+        var (handler, _, _, _) = BuildHandler(db, aiAvailable: true);
 
         var result = await handler.Handle(new RefreshAnalysisCommand { Year = null }, CancellationToken.None);
 
@@ -85,14 +90,17 @@ public sealed class RefreshAnalysisCommandHandlerTests
         db.RaceSessions.Add(new RaceSession { SessionKey = 10, MeetingKey = 1, SessionName = "Race", SessionType = "Race", DateStart = DateTimeOffset.UtcNow.AddDays(-30), IsClassified = true });
         await db.SaveChangesAsync();
 
-        var (handler, chat) = BuildHandler(db, aiAvailable: true);
+        var (handler, chat, _, _) = BuildHandler(db, aiAvailable: true);
 
         var result = await handler.Handle(new RefreshAnalysisCommand { Year = 2025 }, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.PreviewsGenerated.Should().Be(0);
         result.Value.Skipped.Should().Be(1);
-        result.Value.Notes.Should().BeEmpty();
+        // No note about the preview itself — a season with no upcoming race is a clean skip.
+        // Indexing is a separate, always-attempted step: embeddings default to unavailable in
+        // BuildHandler, so that step notes itself even though this test is about previews.
+        result.Value.Notes.Should().ContainSingle(n => n.Contains("Embeddings unavailable", StringComparison.Ordinal));
         chat.Calls.Should().BeEmpty();
     }
 
@@ -101,7 +109,7 @@ public sealed class RefreshAnalysisCommandHandlerTests
     {
         using var db = InMemoryDb.Create();
         await SeasonSeed.SeedNextRaceAsync(db, withGrid: true);
-        var (handler, chat) = BuildHandler(db, aiAvailable: true);
+        var (handler, chat, _, _) = BuildHandler(db, aiAvailable: true);
 
         var result = await handler.Handle(new RefreshAnalysisCommand { Year = 2026 }, CancellationToken.None);
 
@@ -119,7 +127,7 @@ public sealed class RefreshAnalysisCommandHandlerTests
         await SeasonSeed.SeedNextRaceAsync(db, withGrid: true); // Real grid now exists -> next.GridConfirmed == true.
         db.RacePreviewNarratives.Add(ExistingNarrative(gridConfirmed: false, basedOnLatestClassifiedSessionKey: 10));
         await db.SaveChangesAsync();
-        var (handler, chat) = BuildHandler(db, aiAvailable: true);
+        var (handler, chat, _, _) = BuildHandler(db, aiAvailable: true);
 
         var result = await handler.Handle(new RefreshAnalysisCommand { Year = 2026 }, CancellationToken.None);
 
@@ -136,7 +144,7 @@ public sealed class RefreshAnalysisCommandHandlerTests
         await SeasonSeed.SeedNextRaceAsync(db, withGrid: true); // Latest classified session for 2026 is 10.
         db.RacePreviewNarratives.Add(ExistingNarrative(gridConfirmed: true, basedOnLatestClassifiedSessionKey: 5));
         await db.SaveChangesAsync();
-        var (handler, chat) = BuildHandler(db, aiAvailable: true);
+        var (handler, chat, _, _) = BuildHandler(db, aiAvailable: true);
 
         var result = await handler.Handle(new RefreshAnalysisCommand { Year = 2026 }, CancellationToken.None);
 
@@ -152,7 +160,7 @@ public sealed class RefreshAnalysisCommandHandlerTests
         await SeasonSeed.SeedNextRaceAsync(db, withGrid: true);
         db.RacePreviewNarratives.Add(ExistingNarrative(gridConfirmed: true, basedOnLatestClassifiedSessionKey: 10));
         await db.SaveChangesAsync();
-        var (handler, chat) = BuildHandler(db, aiAvailable: true);
+        var (handler, chat, _, _) = BuildHandler(db, aiAvailable: true);
 
         var result = await handler.Handle(new RefreshAnalysisCommand { Year = 2026 }, CancellationToken.None);
 
@@ -171,7 +179,7 @@ public sealed class RefreshAnalysisCommandHandlerTests
         await SeasonSeed.SeedOtherSeasonClassifiedRaceAsync(db, year: 2025, sessionKey: 900); // Higher key, different season.
         db.RacePreviewNarratives.Add(ExistingNarrative(gridConfirmed: true, basedOnLatestClassifiedSessionKey: 10));
         await db.SaveChangesAsync();
-        var (handler, chat) = BuildHandler(db, aiAvailable: true);
+        var (handler, chat, _, _) = BuildHandler(db, aiAvailable: true);
 
         var result = await handler.Handle(new RefreshAnalysisCommand { Year = 2026 }, CancellationToken.None);
 
@@ -187,7 +195,7 @@ public sealed class RefreshAnalysisCommandHandlerTests
     {
         using var db = InMemoryDb.Create();
         await SeasonSeed.SeedNextRaceAsync(db, withGrid: true);
-        var (handler, chat) = BuildHandler(db, aiAvailable: true);
+        var (handler, chat, _, _) = BuildHandler(db, aiAvailable: true);
         chat.Throws = new FormatException("model 'llama3.1:8b' not found");
 
         var result = await handler.Handle(new RefreshAnalysisCommand { Year = 2026 }, CancellationToken.None);
@@ -204,7 +212,7 @@ public sealed class RefreshAnalysisCommandHandlerTests
     {
         using var db = InMemoryDb.Create();
         await SeasonSeed.SeedNextRaceAsync(db, withGrid: true);
-        var (handler, _) = BuildHandler(db, aiAvailable: true);
+        var (handler, _, _, _) = BuildHandler(db, aiAvailable: true);
 
         var first = await handler.Handle(new RefreshAnalysisCommand { Year = 2026 }, CancellationToken.None);
         var second = await handler.Handle(new RefreshAnalysisCommand { Year = 2026 }, CancellationToken.None);
@@ -213,5 +221,37 @@ public sealed class RefreshAnalysisCommandHandlerTests
         second.Value.PreviewsGenerated.Should().Be(0);
         second.Value.Skipped.Should().Be(1);
         db.RacePreviewNarratives.ToList().Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task Handle_EmbeddingsUnavailable_SkipsIndexingAndNotes()
+    {
+        using var db = InMemoryDb.Create();
+        await SeasonSeed.SeedNextRaceAsync(db, withGrid: true); // Session 10 (year 2026) is classified and non-sprint — eligible for indexing.
+        var (handler, _, embeddings, _) = BuildHandler(db, aiAvailable: true, embeddingsAvailable: false);
+
+        var result = await handler.Handle(new RefreshAnalysisCommand { Year = 2026 }, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.RacesIndexed.Should().Be(0);
+        result.Value.Notes.Should().ContainSingle(n => n.Contains("Embeddings unavailable", StringComparison.Ordinal));
+        embeddings.CallCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Handle_RaceAlreadyIndexed_SecondRunDoesNotReEmbedIt()
+    {
+        using var db = InMemoryDb.Create();
+        await SeasonSeed.SeedNextRaceAsync(db, withGrid: true); // Session 10 (year 2026) is classified and non-sprint — eligible for indexing.
+        var (handler, _, embeddings, _) = BuildHandler(db, aiAvailable: true, embeddingsAvailable: true);
+
+        var first = await handler.Handle(new RefreshAnalysisCommand { Year = 2026 }, CancellationToken.None);
+        var second = await handler.Handle(new RefreshAnalysisCommand { Year = 2026 }, CancellationToken.None);
+
+        first.IsSuccess.Should().BeTrue();
+        first.Value.RacesIndexed.Should().Be(1);
+        second.IsSuccess.Should().BeTrue();
+        second.Value.RacesIndexed.Should().Be(0);
+        embeddings.CallCount.Should().Be(1);
     }
 }

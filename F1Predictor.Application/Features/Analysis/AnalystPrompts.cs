@@ -25,6 +25,10 @@ internal static class AnalystPrompts
         "Keep answers under about 200 words unless the user asks for detail. Use plain prose; " +
         "short markdown lists are fine.";
 
+    public const string Precedent =
+        "When asked for precedent or \"races like...\", call find_similar_races and cite the " +
+        "returned races by name; similarity is over recorded facts, not over narrative.";
+
     private const string DriverExplanationTask =
         "You will receive one driver's prediction and the contribution of each feature to it, " +
         "plus their season averages. Explain these numbers in at most three sentences: which " +
@@ -49,7 +53,7 @@ internal static class AnalystPrompts
     public static string ExplainRaceSystem() => Compose(Identity, Grounding, NoSpeculation, RetrospectiveTask);
 
     public static string AnalystSystem(int year, DateOnly today) => Compose(
-        Identity, Grounding, NoSpeculation, Brevity,
+        Identity, Grounding, NoSpeculation, Brevity, Precedent,
         $"The season under discussion is {year}. Today is {today:yyyy-MM-dd}. Use the tools to look " +
         "up standings, forecasts, the next race preview and driver explanations before answering.");
 

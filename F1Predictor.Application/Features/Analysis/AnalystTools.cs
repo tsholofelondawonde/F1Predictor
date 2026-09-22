@@ -1,7 +1,10 @@
 using System.ComponentModel;
+using F1Predictor.Application.Abstractions.AI;
 using F1Predictor.Application.Abstractions.Messaging;
 using F1Predictor.Application.Features.Analysis.ExplainDriverPrediction;
 using F1Predictor.Application.Features.Analysis.ExplainRacePrediction;
+using F1Predictor.Application.Features.Analysis.FindSimilarRaces;
+using F1Predictor.Application.Features.Analysis.SearchRaces;
 using F1Predictor.Application.Features.Championship.GetForecast;
 using F1Predictor.Application.Features.Championship.GetScenarios;
 using F1Predictor.Application.Features.Championship.GetStandings;
@@ -28,7 +31,9 @@ internal sealed class AnalystTools(
     IQueryHandler<GetTitleScenariosQuery, TitleScenariosResponse> scenarios,
     IQueryHandler<GetSeasonRacesQuery, IReadOnlyList<SeasonRaceResponse>> races,
     IQueryHandler<PredictRaceQuery, RacePredictionsResponse> predictions,
-    IQueryHandler<ExplainRacePredictionQuery, DriverExplanationResponse> explainRace)
+    IQueryHandler<ExplainRacePredictionQuery, DriverExplanationResponse> explainRace,
+    IQueryHandler<SearchRacesQuery, SimilarRacesResponse> searchRaces,
+    IRaceEmbeddingIndex embeddingIndex)
 {
     public IList<AITool> For(int year) =>
     [
@@ -47,7 +52,11 @@ internal sealed class AnalystTools(
         AIFunctionFactory.Create(([Description("Race session key from get_season_races")] int sessionKey, CancellationToken ct) => RacePredictionsAsync(sessionKey, ct), "get_race_predictions",
             "For a classified race: each driver's predicted probabilities against where they actually finished."),
         AIFunctionFactory.Create(([Description("Race session key from get_season_races")] int sessionKey, [Description("Car number")] int driverNumber, CancellationToken ct) => ExplainRaceDriverAsync(sessionKey, driverNumber, ct), "explain_race_driver",
-            "Why the model rated one driver the way it did for a classified race, and how they actually finished: each feature's contribution.")
+            "Why the model rated one driver the way it did for a classified race, and how they actually finished: each feature's contribution."),
+        AIFunctionFactory.Create(([Description("What kind of race to look for, e.g. 'wet race with many retirements'")] string text, CancellationToken ct) => FindSimilarRacesAsync(text, ct), "find_similar_races",
+            "Finds past races whose recorded facts (winner, weather, retirements, pit stops) are similar to a description — for precedent."),
+        AIFunctionFactory.Create(([Description("Race session key from get_season_races")] int sessionKey, CancellationToken ct) => GetRaceFactSheetAsync(sessionKey, ct), "get_race_fact_sheet",
+            "The stored, deterministic fact-sheet text for one race, if it has been indexed for similarity search.")
     ];
 
     public static string StatusFor(string functionName) => functionName switch
@@ -60,6 +69,8 @@ internal sealed class AnalystTools(
         "get_season_races" => "Checking the calendar…",
         "get_race_predictions" => "Comparing predictions with results…",
         "explain_race_driver" => "Comparing that driver's prediction with the result…",
+        "find_similar_races" => "Looking for similar races…",
+        "get_race_fact_sheet" => "Reading the race fact sheet…",
         _ => "Consulting the model…"
     };
 
@@ -169,6 +180,28 @@ internal sealed class AnalystTools(
                 actualPodium = d.ActualPodium
             })
         };
+    }
+
+    private async Task<object> FindSimilarRacesAsync(string text, CancellationToken ct)
+    {
+        var result = await searchRaces.Handle(new SearchRacesQuery(text), ct);
+        if (result.IsFailure) return Unavailable(result.Error);
+        var r = result.Value;
+        return new
+        {
+            races = r.Races.Select(race => new
+            {
+                sessionKey = race.SessionKey, name = race.MeetingName, year = race.Year,
+                similarity = R(race.Similarity), summary = race.Summary
+            })
+        };
+    }
+
+    private async Task<object> GetRaceFactSheetAsync(int sessionKey, CancellationToken ct)
+    {
+        var record = await embeddingIndex.GetAsync(sessionKey, ct);
+        if (record is null) return Unavailable(AnalysisErrors.NotIndexed(sessionKey));
+        return new { sessionKey, text = record.Text };
     }
 
     private static object TargetSummary(TargetExplanationResponse target) => new

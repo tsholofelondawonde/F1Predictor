@@ -2,6 +2,8 @@ using F1Predictor.Application.Features.Analysis;
 using F1Predictor.Application.Features.Analysis.AskAnalyst;
 using F1Predictor.Application.Features.Analysis.ExplainDriverPrediction;
 using F1Predictor.Application.Features.Analysis.ExplainRacePrediction;
+using F1Predictor.Application.Features.Analysis.FindSimilarRaces;
+using F1Predictor.Application.Features.Analysis.SearchRaces;
 using F1Predictor.Application.Features.Championship.GetForecast;
 using F1Predictor.Application.Features.Championship.GetScenarios;
 using F1Predictor.Application.Features.Championship.GetStandings;
@@ -26,7 +28,9 @@ public sealed class AskAnalystCommandHandlerTests
         new StubQueryHandler<GetTitleScenariosQuery, TitleScenariosResponse>(),
         new StubQueryHandler<GetSeasonRacesQuery, IReadOnlyList<SeasonRaceResponse>>(),
         new StubQueryHandler<PredictRaceQuery, RacePredictionsResponse>(),
-        new StubQueryHandler<ExplainRacePredictionQuery, DriverExplanationResponse>());
+        new StubQueryHandler<ExplainRacePredictionQuery, DriverExplanationResponse>(),
+        new StubQueryHandler<SearchRacesQuery, SimilarRacesResponse>(),
+        new FakeRaceEmbeddingIndex());
 
     private static AskAnalystCommandHandler Handler(FakeChatClient chat, bool aiAvailable = true, bool modelsAvailable = true) =>
         new(chat, new FakeAiCapabilities(aiAvailable), new FakeRacePredictor { ModelsAvailable = modelsAvailable },

@@ -43,4 +43,30 @@ internal static class SeasonSeed
 
         await db.SaveChangesAsync();
     }
+
+    /// <summary>
+    /// A fully classified, non-sprint race with all six raw inputs <c>RaceFactSheet.Build</c>
+    /// needs — meeting, session, results, grid, pit stops, weather and a driver directory — for
+    /// tests of <c>IndexRaceCommandHandler</c> and the similarity-search handlers that hydrate
+    /// off a real session/meeting join.
+    /// </summary>
+    public static async Task SeedClassifiedRaceAsync(
+        ApplicationDbContext db, int sessionKey, int meetingKey, int year,
+        string meetingName, string circuitShortName, DateTimeOffset dateStart)
+    {
+        db.Meetings.Add(new Meeting { MeetingKey = meetingKey, Year = year, MeetingName = meetingName, CircuitShortName = circuitShortName, CountryName = circuitShortName, DateStart = dateStart });
+        db.RaceSessions.Add(new RaceSession { SessionKey = sessionKey, MeetingKey = meetingKey, SessionName = "Race", SessionType = "Race", DateStart = dateStart, IsClassified = true });
+
+        for (var n = 1; n <= 3; n++)
+        {
+            db.DriverEntries.Add(new DriverEntry { SessionKey = sessionKey, DriverNumber = n, FullName = $"Driver {n}", NameAcronym = $"D0{n}", TeamName = "Team", TeamColour = "FF0000" });
+            db.StartingGridEntries.Add(new StartingGridEntry { SessionKey = sessionKey, DriverNumber = n, Position = n, LapDuration = 80.0 + n });
+            db.SessionResultEntries.Add(new SessionResultEntry { SessionKey = sessionKey, DriverNumber = n, Position = n, Points = n switch { 1 => 25, 2 => 18, _ => 15 } });
+            db.PitStopEntries.Add(new PitStopEntry { SessionKey = sessionKey, DriverNumber = n, StopDuration = 2.5 + n * 0.1 });
+        }
+
+        db.WeatherReadings.Add(new WeatherReading { SessionKey = sessionKey, Rainfall = 0, TrackTemperature = 40 });
+
+        await db.SaveChangesAsync();
+    }
 }

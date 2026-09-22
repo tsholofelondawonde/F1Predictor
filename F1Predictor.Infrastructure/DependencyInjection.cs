@@ -315,13 +315,20 @@ public static class DependencyInjection
             // three-tool question shows up as three spans rather than one.
             .ConfigureOptions(chat =>
             {
-                chat.Temperature ??= options.Temperature;
                 chat.MaxOutputTokens ??= options.MaxOutputTokens;
 
                 if (options.Provider == AiProvider.Ollama)
                 {
-                    // num_ctx is an Ollama-only sampling option; it has no meaning to an
-                    // OpenAI-compatible endpoint, so it's only ever set on that path.
+                    // Temperature is set only here, not for OpenAi: reasoning-family OpenAI
+                    // models (the default ChatModel, gpt-5-mini, among them) reject any
+                    // temperature other than their default (1) with a 400 unsupported_value,
+                    // so sending options.Temperature would break the OpenAi path outright.
+                    // Ollama has no such restriction, and narration determinism there still
+                    // matters, so it keeps the configured value.
+                    chat.Temperature ??= options.Temperature;
+
+                    // num_ctx is likewise an Ollama-only sampling option; it has no meaning to
+                    // an OpenAI-compatible endpoint, so it's only ever set on this path too.
                     chat.AdditionalProperties ??= [];
                     chat.AdditionalProperties.TryAdd("num_ctx", options.Ollama.ContextLength);
                 }

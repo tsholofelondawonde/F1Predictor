@@ -38,6 +38,8 @@ export interface NextRacePreviewResponse {
   /** False until qualifying has run, in which case every grid position is projected from form. */
   gridConfirmed: boolean;
   drivers: PreviewDriver[];
+  /** True only when the grid isn't confirmed but OpenF1 already has one — qualifying has run and just needs re-ingesting. */
+  qualifyingReadyToIngest: boolean;
 }
 
 export interface RacePredictionsResponse {

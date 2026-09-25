@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { RacePreviewNarrative } from "@/features/analysis/components/RacePreviewNarrative";
 import { getNextRacePreview } from "@/features/predictions/predictions-service";
 import { PreviewTable } from "@/features/predictions/components/PreviewTable";
+import { QualifyingReadyBanner } from "@/features/predictions/components/QualifyingReadyBanner";
 import { getDataStatus } from "@/features/seasons/seasons-service";
 import { Card } from "@/shared/components/Card";
 import { Countdown } from "@/shared/components/Countdown";
@@ -106,6 +107,8 @@ export function NextRaceView({ year }: NextRaceViewProps) {
           their own once the real grid is published.
         </p>
       )}
+
+      {data.qualifyingReadyToIngest && <QualifyingReadyBanner year={year} onIngested={refresh} />}
 
       <RacePreviewNarrative sessionKey={data.sessionKey} />
 

@@ -21,8 +21,11 @@ internal sealed class AiOptions
 
     public float Temperature { get; set; } = 0.2f;
 
-    /// <summary>Cost guard now that tokens cost money on the OpenAi path.</summary>
-    public int MaxOutputTokens { get; set; } = 800;
+    /// <summary>Cost guard now that tokens cost money on the OpenAi path. gpt-5-mini is a
+    /// reasoning-family model whose hidden reasoning tokens draw from this same budget, so too
+    /// low a value starves the visible answer entirely (an empty completion, not an error) —
+    /// verified against both the race-preview and analyst-chat routes at 800.</summary>
+    public int MaxOutputTokens { get; set; } = 4096;
 
     internal sealed class OllamaOptions
     {

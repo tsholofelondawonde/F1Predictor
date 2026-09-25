@@ -21,9 +21,6 @@ internal sealed class IngestSeasonCommandHandler(
     private const string PointsScoringSessionType = "Race";
 
     private const string SprintSessionName = "Sprint";
-    private const string QualifyingSessionType = "Qualifying";
-    private const string SprintQualifyingSessionName = "Sprint Qualifying";
-    private const string RaceQualifyingSessionName = "Qualifying";
 
     public async Task<Result<IngestSeasonResponse>> Handle(
         IngestSeasonCommand command,
@@ -278,13 +275,7 @@ internal sealed class IngestSeasonCommandHandler(
         var results = await openF1.GetSessionResultAsync(session.SessionKey, cancellationToken);
         var isClassified = results.Count > 0;
 
-        // The grid comes from the qualifying session, not the race session — OpenF1 keys
-        // starting_grid by the session that produced the order. A sprint takes its order from
-        // Sprint Qualifying instead.
-        var qualifyingSessionName = isSprint ? SprintQualifyingSessionName : RaceQualifyingSessionName;
-        var qualifyingSession = allSessions.FirstOrDefault(s =>
-            string.Equals(s.SessionType, QualifyingSessionType, StringComparison.Ordinal) &&
-            string.Equals(s.SessionName, qualifyingSessionName, StringComparison.Ordinal));
+        var qualifyingSession = QualifyingSessionMatcher.Find(allSessions, isSprint);
 
         // Fetched even when the race has not run: once qualifying is done the real grid exists,
         // and that is what turns a projected preview into a confirmed one.

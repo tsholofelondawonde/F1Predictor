@@ -1,8 +1,11 @@
 using F1Predictor.Application.Abstractions.Data;
 using F1Predictor.Application.Abstractions.MachineLearning;
 using F1Predictor.Application.Abstractions.Messaging;
+using F1Predictor.Application.Abstractions.OpenF1;
 using F1Predictor.Domain.Predictions;
 using F1Predictor.Domain.RaceData.Entities;
+using Microsoft.Extensions.Caching.Hybrid;
+using Microsoft.Extensions.Logging;
 using SharedKernel;
 
 namespace F1Predictor.Application.Features.Predictions.PreviewNextRace;
@@ -20,7 +23,10 @@ namespace F1Predictor.Application.Features.Predictions.PreviewNextRace;
 /// </remarks>
 internal sealed class PreviewNextRaceQueryHandler(
     IApplicationDbContext context,
-    IRacePredictor predictor)
+    IRacePredictor predictor,
+    IOpenF1Client openF1,
+    HybridCache cache,
+    ILogger<PreviewNextRaceQueryHandler> logger)
     : IQueryHandler<PreviewNextRaceQuery, NextRacePreviewResponse>
 {
     public async Task<Result<NextRacePreviewResponse>> Handle(
@@ -48,6 +54,9 @@ internal sealed class PreviewNextRaceQueryHandler(
             .OrderByDescending(d => d.PodiumProbability)
             .ToList();
 
+        var qualifyingReadyToIngest = !loaded.Value.GridConfirmed
+            && await QualifyingReadyToIngestAsync(race, cancellationToken);
+
         return Result.Success(new NextRacePreviewResponse(
             query.Year,
             race.SessionKey,
@@ -59,7 +68,39 @@ internal sealed class PreviewNextRaceQueryHandler(
             race.SprintSessionKey,
             race.SprintDateStart,
             loaded.Value.GridConfirmed,
-            drivers));
+            drivers,
+            qualifyingReadyToIngest));
+    }
+
+    /// <summary>
+    /// Whether OpenF1 already has a qualifying grid the local database doesn't — checked only
+    /// while the local grid is unconfirmed, and cached ~5 minutes so the page's 60-second poll
+    /// doesn't hit OpenF1 on every tick. A failure here is logged and swallowed: the preview is
+    /// the product, this flag is a nudge.
+    /// </summary>
+    private async Task<bool> QualifyingReadyToIngestAsync(UpcomingRace race, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await CachedQualifyingCheck.For(cache, race.MeetingKey, async ct =>
+            {
+                var sessions = await openF1.GetSessionsAsync(race.MeetingKey, ct);
+                var qualifying = QualifyingSessionMatcher.Find(sessions, isSprint: false);
+
+                if (qualifying is null)
+                {
+                    return false;
+                }
+
+                var grid = await openF1.GetStartingGridAsync(qualifying.SessionKey, ct);
+                return grid.Count > 0;
+            }, cancellationToken);
+        }
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning(ex, "Qualifying-ready check failed for meeting {MeetingKey}; assuming not ready.", race.MeetingKey);
+            return false;
+        }
     }
 
     private PreviewDriverResponse Describe(

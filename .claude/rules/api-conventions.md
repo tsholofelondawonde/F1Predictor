@@ -7,8 +7,10 @@
 | POST | `/api/seasons/{year}/ingest?force=` | Ingest a season from OpenF1 (~4–5 min, idempotent) |
 | GET | `/api/seasons/{year}/races` | List ingested sessions, flagged sprint/classified |
 | POST | `/api/features/rebuild` | Regenerate the feature table |
-| POST | `/api/models/train?year=` | Train both models, return metrics |
-| GET | `/api/seasons/{year}/holdout` | Predictions vs. reality for the held-out race |
+| POST | `/api/models/train?year=&fromYear=&notes=` | Train both models on seasons `fromYear..year`, record the run, return validation/baseline/holdout metrics |
+| GET | `/api/models/runs?target=&take=` | Training-run log, newest first (see `ml-pipeline.md`) |
+| GET | `/api/seasons/{year}/holdout` | Predictions vs. reality for the held-out race, with `modelWarning` |
+| GET | `/api/seasons/{year}/data-status` | Whether ingest/features/models have fallen behind |
 | GET | `/api/races/{sessionKey}/predictions` | Per-driver probabilities for one race |
 | GET | `/api/seasons/{year}/next-race` | Preview the next Grand Prix (see `ml-pipeline.md`) |
 | GET | `/api/seasons/{year}/standings` | Drivers' and constructors' tables |
@@ -20,7 +22,14 @@
 | GET | `/api/races/{sessionKey}/preview` | Stored AI preview, with `stale` |
 | POST | `/api/races/{sessionKey}/preview` | Generate/replace the preview (X-Api-Key, Mutating limit) |
 | POST | `/api/ai/ask` | Analyst chat, `text/event-stream` (X-Api-Key, Analyst limit 10/min) |
+| GET | `/api/races/{sessionKey}/predictions/{driverNumber}/explanation` | Contributions for a classified race, vs. what happened |
+| GET | `/api/races/{sessionKey}/similar` | Most similar indexed races (pgvector; needs embeddings) |
+| GET | `/api/analysis/search?q=` | Semantic search over race fact sheets (needs embeddings) |
+| POST | `/api/admin/analysis/refresh` | Regenerate stale previews / index races on demand (X-Api-Key) |
 | GET | `/health` | Health check |
+
+The AI routes above are **paused** while `Ai:Enabled=false` (the current `appsettings.json`).
+They stay mapped but fail closed with `Analysis.AiUnavailable`, or return no narrative.
 
 `?force=true` on ingest re-fetches and replaces sessions already stored, instead of skipping
 them. Without it a session is written exactly once and never revisited, so it is the only route

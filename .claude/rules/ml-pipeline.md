@@ -76,7 +76,7 @@ Two independent binary classifiers over the same five features, differing only i
 ```
 mlContext.Auto()
   .CreateBinaryClassificationExperiment(MaxExperimentTimeInSeconds: 30, OptimizingMetric: F1Score)
-  .Execute(trainSet, labelColumnName: "Label")
+  .Execute(trainView, validationView, labelColumnName: "Label")
 ```
 
 AutoML searches over SDCA, LBFGS, LightGBM, FastTree, and FastForest, building its own
@@ -85,8 +85,43 @@ longer a hand-built `Concatenate`/`NormalizeMinMax` step. `ModelTrainingResult.T
 records which trainer the search picked for each target; the two classifiers may land on
 different trainers since they are fit independently.
 
-80/20 split, seed 42, unchanged. Models are saved to the directory configured at
-`MachineLearning:ModelDirectory` (default `models/`).
+**Seasons.** `POST /api/models/train?year=&fromYear=` trains on every Grand Prix from `fromYear`
+(default `year`) through `year`. The holdout is always the latest race **of `year` itself**
+(`SeasonFeatureSet.Holdout`), so any window holds out the same race the holdout page scores.
+
+**The split is by race and by time, never by row** (`Features/Predictions/Evaluation/RaceTimeSplit.cs`).
+With the holdout set aside, the remaining races are ordered by date. The latest ~20% (at least
+two) validate, and everything earlier trains. The split lives in Application because it is
+policy; `IModelTrainer` receives a ready-made `TrainingData(Train, Validation)` and never
+re-splits. It replaced a random 80/20 row split that leaked in two ways:
+- a race's rows landed on both sides, so the model was "validated" on races it had partly seen;
+- later races trained a model that was then scored on earlier ones.
+
+A prediction is always about a race that hasn't happened, so validation has to look like that.
+Five races (holdout + 2 train + 2 validation) is the minimum to train.
+
+**Metrics come from the train-only fit; the shipped model is refitted.** `MlNetModelTrainer`
+evaluates `BestRun.Model` on the validation races. It then refits `BestRun.Estimator` on train +
+validation and saves *that*, so the served model uses every non-holdout race.
+
+**Every run is recorded** in `ModelTrainingRuns` (append-only, one row per target) and listed
+newest first by `GET /api/models/runs?target=&take=`. Each row holds:
+- the season window, the trainer and the feature names
+- validation AUC, F1, log loss, AUPRC, precision and recall
+- `BaselineAuc`: grid order alone on the same validation rows
+- holdout AUC and log loss, scored through the saved files via `IRacePredictor`
+- `?notes=` from the train call
+
+The response adds `AucOverBaseline`. Log loss is in **bits** throughout — ML.NET's unit, pinned by
+`LogLossUnitTests` — so validation and holdout numbers compare directly. The model files are
+still overwritten each run; the table is the experiment log, not a model registry.
+
+The holdout page (`GetHoldoutPredictionsQueryHandler`) sets `ModelWarning` when the newest run
+held out a different race, or when no run is recorded. The predictions are still served, but
+they may be recitals of training data rather than a test.
+
+Models are saved to the directory configured at `MachineLearning:ModelDirectory` (default
+`models/`).
 
 **Reproducibility is best-effort, not guaranteed**, unlike the rest of this codebase's stricter
 determinism stance (see the Championship Forecasting section's `DeterministicRandom`). ML.NET's
@@ -94,9 +129,35 @@ AutoML only exposes a wall-clock time budget, not a trial-count knob, so re-runn
 not guaranteed to reach the same trainer or metrics bit-for-bit — this is an accepted trade-off
 for search quality within a bounded time, not an oversight.
 
-**Read AUC and F1, never accuracy.** Podium is ~15% of rows, so "always predict no" scores
-~85% accuracy while being useless. `TrainModelsResponse` carries this warning in the payload
-itself for that reason. AUC near 0.5 is noise; grid position alone should clear 0.65.
+**Read AUC against the baseline, plus log loss and F1 — never accuracy.** Podium is ~15% of rows,
+so "always predict no" scores ~85% accuracy while being useless. `TrainModelsResponse` carries
+this warning in the payload itself for that reason. AUC near 0.5 is noise; a model that can't
+beat `BaselineAuc` has learned nothing the grid didn't already say.
+
+**Known leakage still in the feature set** (deliberately left for the feature-engineering work):
+`PitStopCount`, `AvgPitStopDuration` and `Rainfall` are only known *after* the race. Pit count
+also tracks the label, because a retiree stops less. At preview time they are replaced by season
+averages and rain = 0, so the model is served inputs it never trained on. Expect validation AUC
+to *drop* when they are removed; that drop is the honest number.
+
+### How to add (or remove) a feature
+
+Every touch point, in order:
+1. `Domain/Predictions/DriverRaceFeature.cs`: the property, and its rule in `Create`. It must use
+   only information available **before the race starts**. A rolling or form feature may only
+   look at races strictly earlier than the row's own date.
+2. `RebuildFeaturesCommandHandler`, if the rule needs raw data it doesn't load yet.
+3. A migration (`dotnet ef migrations add …`, see `setup.md`). Rehearse it on a Neon branch and
+   apply it to production by hand before merge.
+4. `Infrastructure/MachineLearning/RaceFeatureInput.cs`: the property, `From`, `FeatureNames` and
+   `ValuesByName`.
+5. **Train/serve parity**: the next-race preview builds feature rows in memory
+   (`PreviewNextRace/StartingGridProjection.cs`, `NextRaceContext`), and the new feature must be
+   computed there the same way. A feature that exists only at training time is the leak above
+   all over again.
+6. Tests: `DriverRaceFeatureTests` for the rule, and the explainer's `SyntheticModels` if the
+   feature count matters there.
+7. Rebuild → train with `?notes=` describing the change → compare in `GET /api/models/runs`.
 
 ## Next-Race Preview
 
@@ -197,15 +258,29 @@ explanation method every trainer in the search space actually supports.
 
 ## AI analyst
 
-An `IChatClient` (`Microsoft.Extensions.AI`, backed by OllamaSharp against a local Ollama daemon)
-sits beside the classifiers and the simulator. It narrates and answers questions; it never
-predicts — every number it states must come from a feature contribution, a query handler result,
-or a tool call, never from the model's own "reasoning". `Ai:Provider` defaults to `None`, which
-fails closed exactly like `Security:ApiKey`: an `UnavailableChatClient` is registered so handler
-constructors always resolve, and handlers guard on `IAiCapabilities.ChatAvailable` before ever
-calling it. `Ai:Provider=OpenAi` is accepted by configuration but throws at startup
-(`F1Predictor.Infrastructure/DependencyInjection.cs`, `AddAi`) — it is reserved for a hosted
-provider that is not implemented yet.
+> **Paused.** `appsettings.json` sets `Ai:Enabled=false` while work focuses on the model. The
+> code and the pgvector schema are intact; set `Ai:Enabled=true` (plus a provider) to resume.
+
+An `IChatClient` (`Microsoft.Extensions.AI`) sits beside the classifiers and the simulator. It is
+backed by OllamaSharp against a local Ollama daemon (`Ai:Provider=Ollama`) or by the OpenAI SDK
+(`Ai:Provider=OpenAi`, which also accepts any OpenAI-compatible endpoint). It narrates and
+answers questions; it never predicts — every number it states must come from a feature
+contribution, a query handler result, or a tool call, never from the model's own "reasoning".
+
+`Ai:Provider` defaults to `None`, which fails closed exactly like `Security:ApiKey`:
+- An `UnavailableChatClient` is registered, so handler constructors always resolve.
+- Handlers guard on `IAiCapabilities.ChatAvailable` before ever calling the client.
+
+Embeddings (`Ai:Embeddings:Provider`, pgvector-backed race search) are gated the same way on
+`EmbeddingsAvailable`.
+
+**`Ai:Enabled` is the master switch.** `false` is folded into both provider settings as `None`,
+by `AiOptions.ApplyMasterSwitch` (options post-configure) and `AiOptions.Read` (the eager reads
+in `AddAi`/`AddScheduler`). Every downstream `Provider` check therefore keeps working unchanged,
+and keys in user secrets need not be deleted to turn AI off. With AI off:
+- the ingestion coordinator does not trigger `AnalysisRefreshJob`;
+- `/api/races/{sessionKey}/similar` returns `Analysis.AiUnavailable`;
+- the frontend hides AI surfaces through `WhenAiAvailable`.
 
 `AiOptions` defaults: `Ollama.Endpoint` `http://localhost:11434`, `Ollama.Model` `llama3.1:8b` (any
 Ollama model with tool support), `Ollama.ContextLength` **16384** — Ollama's own default of 4096 is

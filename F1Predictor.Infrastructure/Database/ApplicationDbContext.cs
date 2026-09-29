@@ -22,6 +22,7 @@ public class ApplicationDbContext(
     public DbSet<WeatherReading> WeatherReadings { get; set; } = null!;
     public DbSet<DriverEntry> DriverEntries { get; set; } = null!;
     public DbSet<DriverRaceFeature> DriverRaceFeatures { get; set; } = null!;
+    public DbSet<ModelTrainingRun> ModelTrainingRuns { get; set; } = null!;
     public DbSet<RacePreviewNarrative> RacePreviewNarratives { get; set; } = null!;
     internal DbSet<RaceEmbeddingRow> RaceEmbeddingRows { get; set; } = null!;
 

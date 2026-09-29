@@ -2,6 +2,7 @@
 
 import { useCallback } from "react";
 import { RacePreviewNarrative } from "@/features/analysis/components/RacePreviewNarrative";
+import { WhenAiAvailable } from "@/shared/components/WhenAiAvailable";
 import { getNextRacePreview } from "@/features/predictions/predictions-service";
 import { PreviewTable } from "@/features/predictions/components/PreviewTable";
 import { QualifyingReadyBanner } from "@/features/predictions/components/QualifyingReadyBanner";
@@ -110,7 +111,9 @@ export function NextRaceView({ year }: NextRaceViewProps) {
 
       {data.qualifyingReadyToIngest && <QualifyingReadyBanner year={year} onIngested={refresh} />}
 
-      <RacePreviewNarrative sessionKey={data.sessionKey} />
+      <WhenAiAvailable>
+        <RacePreviewNarrative sessionKey={data.sessionKey} />
+      </WhenAiAvailable>
 
       <Card>
         <PreviewTable drivers={data.drivers} gridConfirmed={data.gridConfirmed} year={year} />

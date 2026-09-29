@@ -22,8 +22,9 @@ same features, the same AutoML-trained classifiers, the same holdout check — b
 in the layer that owns it, and the console's `Console.WriteLine` reporting has become
 `Result<T>`-returning use cases behind HTTP endpoints.
 
-Still deliberately out of scope: multi-season training, tyre-strategy features, and any
-ranking model over race results. Those remain the natural next steps.
+Still deliberately out of scope: tyre-strategy features and any ranking model over race
+results. Those remain the natural next steps. (Multi-season training is in: `?fromYear=` on
+train.)
 
 ## Tech Stack
 
@@ -37,7 +38,7 @@ ranking model over race results. Those remain the natural next steps.
 | Validation | FluentValidation, applied by a handler decorator |
 | ML | ML.NET 5 — AutoML binary-classification search (see `ml-pipeline.md`) |
 | Championship odds | Plackett–Luce + Monte Carlo, hand-rolled in the Domain (see `ml-pipeline.md`) |
-| AI | Microsoft.Extensions.AI + OllamaSharp (local Ollama); `Ai:Provider=None` in production |
+| AI | Microsoft.Extensions.AI over OllamaSharp or the OpenAI SDK; pgvector race search. **Paused** (`Ai:Enabled=false`) |
 | API docs | Scalar over OpenAPI, at `/scalar` |
 | Frontend | Next.js 16 App Router, React 19, Tailwind 4, axios, zustand |
 

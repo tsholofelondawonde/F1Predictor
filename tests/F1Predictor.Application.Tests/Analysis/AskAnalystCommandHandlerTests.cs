@@ -77,7 +77,7 @@ public sealed class AskAnalystCommandHandlerTests
         chat.Calls.Should().HaveCount(1);
         chat.Calls[0][0].Role.Should().Be(ChatRole.System);
         chat.Calls[0][0].Text.Should().Contain("2026");
-        chat.Options[0]!.Tools.Should().HaveCount(8);
+        chat.Options[0]!.Tools.Should().HaveCount(10);
     }
 
     [Fact]

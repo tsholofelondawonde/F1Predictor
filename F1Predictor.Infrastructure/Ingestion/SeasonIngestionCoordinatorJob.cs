@@ -1,3 +1,4 @@
+using F1Predictor.Application.Abstractions.AI;
 using F1Predictor.Application.Abstractions.Data;
 using F1Predictor.Application.Abstractions.Messaging;
 using F1Predictor.Application.Features.Seasons.Ingest;
@@ -25,9 +26,12 @@ internal sealed class SeasonIngestionCoordinatorJob(
     ICommandHandler<IngestSeasonCommand, IngestSeasonResponse> ingestHandler,
     IOptions<IngestionSchedulerOptions> options,
     IDateTimeProvider dateTimeProvider,
+    IAiCapabilities ai,
     ILogger<SeasonIngestionCoordinatorJob> logger)
     : IJob
 {
+    private bool HasAnalysisWork => ai.ChatAvailable || ai.EmbeddingsAvailable;
+
     public async Task Execute(IJobExecutionContext context)
     {
         var cancellationToken = context.CancellationToken;
@@ -62,7 +66,9 @@ internal sealed class SeasonIngestionCoordinatorJob(
                 // Never await AnalysisRefreshJob's handler inline here — a slow chat completion
                 // (up to TimeoutSeconds, no retries) blocking this loop would delay every other
                 // due season behind it, which is exactly the failure mode this split avoids.
-                if (result.Value.ClassifiedSessionKeys.Count > 0 || result.Value.GridStored)
+                // Skipped outright while the AI layer is off (Ai:Enabled=false or no provider):
+                // the refresh would only log that it had nothing to do.
+                if (HasAnalysisWork && (result.Value.ClassifiedSessionKeys.Count > 0 || result.Value.GridStored))
                 {
                     await context.Scheduler.TriggerJob(
                         AnalysisRefreshJob.Key,

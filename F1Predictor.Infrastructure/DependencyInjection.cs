@@ -143,7 +143,7 @@ public static class DependencyInjection
             .Get<IngestionSchedulerOptions>() ?? new IngestionSchedulerOptions();
         var analysisRefreshOptions = configuration.GetSection(AnalysisRefreshOptions.SectionName)
             .Get<AnalysisRefreshOptions>() ?? new AnalysisRefreshOptions();
-        var aiOptions = configuration.GetSection(AiOptions.SectionName).Get<AiOptions>() ?? new AiOptions();
+        var aiOptions = AiOptions.Read(configuration);
 
         // Mirrors AiCapabilities.ChatAvailable / EmbeddingsAvailable — IAiCapabilities isn't
         // resolvable yet at this point in service registration, so the same two checks are
@@ -192,6 +192,7 @@ public static class DependencyInjection
     {
         services.AddOptions<AiOptions>()
             .Bind(configuration.GetSection(AiOptions.SectionName))
+            .PostConfigure(o => o.ApplyMasterSwitch())
             .Validate(
                 o => o.Provider != AiProvider.OpenAi || !string.IsNullOrWhiteSpace(o.OpenAi.ApiKey),
                 "Ai:OpenAi:ApiKey is required when Ai:Provider is OpenAi.")
@@ -203,7 +204,7 @@ public static class DependencyInjection
         services.AddSingleton<IAiCapabilities, AiCapabilities>();
         services.AddScoped<IRaceEmbeddingIndex, RaceEmbeddingIndex>();
 
-        var options = configuration.GetSection(AiOptions.SectionName).Get<AiOptions>() ?? new AiOptions();
+        var options = AiOptions.Read(configuration);
 
         services.AddOllamaHttpClient(options);
         services.AddChatAndEmbeddingsPipeline(options);

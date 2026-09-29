@@ -5,11 +5,18 @@ using SharedKernel;
 
 namespace F1Predictor.Application.Features.Analysis.FindSimilarRaces;
 
-internal sealed class FindSimilarRacesQueryHandler(IApplicationDbContext context, IRaceEmbeddingIndex index)
+internal sealed class FindSimilarRacesQueryHandler(IAiCapabilities ai, IApplicationDbContext context, IRaceEmbeddingIndex index)
     : IQueryHandler<FindSimilarRacesQuery, SimilarRacesResponse>
 {
     public async Task<Result<SimilarRacesResponse>> Handle(FindSimilarRacesQuery query, CancellationToken cancellationToken)
     {
+        // Gated like SearchRaces, so pausing the AI layer (Ai:Enabled=false) switches off every
+        // embeddings-backed route, not just the ones that call the provider.
+        if (!ai.EmbeddingsAvailable)
+        {
+            return Result.Failure<SimilarRacesResponse>(AnalysisErrors.AiUnavailable);
+        }
+
         // No embedding call — SearchLikeAsync reuses the source race's stored vector, so this
         // works even when the embedding provider is currently down or misconfigured.
         var matches = await index.SearchLikeAsync(query.SessionKey, query.Top, cancellationToken);

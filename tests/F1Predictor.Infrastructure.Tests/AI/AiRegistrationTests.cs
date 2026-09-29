@@ -50,6 +50,24 @@ public sealed class AiRegistrationTests
     }
 
     [Fact]
+    public void AddAi_Disabled_OverridesConfiguredProvidersAndSkipsKeyValidation()
+    {
+        // No ApiKey on purpose: a paused AI layer must not fail validation for a provider it
+        // is not going to use.
+        using var provider = Build(
+            new("Ai:Enabled", "false"),
+            new("Ai:Provider", "OpenAi"),
+            new("Ai:Embeddings:Provider", "OpenAi"));
+
+        var capabilities = provider.GetRequiredService<IAiCapabilities>();
+
+        capabilities.ChatAvailable.Should().BeFalse();
+        capabilities.EmbeddingsAvailable.Should().BeFalse();
+        capabilities.Provider.Should().Be("None");
+        capabilities.Model.Should().BeNull();
+    }
+
+    [Fact]
     public void AddAi_OllamaConfigured_ReportsModelAndResolvesClient()
     {
         using var provider = Build(

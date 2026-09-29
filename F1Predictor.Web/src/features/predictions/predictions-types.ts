@@ -55,4 +55,6 @@ export interface HoldoutPredictionsResponse {
   circuitShortName: string;
   dateStart: string;
   drivers: DriverPrediction[];
+  /** Set when the models on disk can't be confirmed to have held this race out of training. */
+  modelWarning: string | null;
 }

@@ -69,4 +69,40 @@ internal static class SeasonSeed
 
         await db.SaveChangesAsync();
     }
+
+    /// <summary>
+    /// <paramref name="count"/> classified Grands Prix for <paramref name="year"/>, a week apart,
+    /// session keys from <paramref name="firstSessionKey"/>, with feature rows only (what training
+    /// and the holdout read). Every driver finishes where they started, so grid order is a
+    /// perfect ranking. Meetings are named "{year} GP {round}".
+    /// </summary>
+    public static async Task SeedFeatureSeasonAsync(
+        ApplicationDbContext db, int year, int count, int firstSessionKey, int driversPerRace = 5)
+    {
+        var seasonStart = new DateTimeOffset(year, 3, 1, 13, 0, 0, TimeSpan.Zero);
+
+        for (var round = 0; round < count; round++)
+        {
+            var key = firstSessionKey + round;
+            var date = seasonStart.AddDays(7 * round);
+
+            db.Meetings.Add(new Meeting { MeetingKey = key, Year = year, MeetingName = $"{year} GP {round + 1}", CircuitShortName = "X", CountryName = "X", DateStart = date });
+            db.RaceSessions.Add(new RaceSession { SessionKey = key, MeetingKey = key, SessionName = "Race", SessionType = "Race", DateStart = date, IsClassified = true });
+
+            for (var driver = 1; driver <= driversPerRace; driver++)
+            {
+                db.DriverRaceFeatures.Add(new DriverRaceFeature
+                {
+                    SessionKey = key,
+                    DriverNumber = driver,
+                    GridPosition = driver,
+                    FinishPosition = driver,
+                    Podium = driver <= 3,
+                    PointsFinish = driver <= 4
+                });
+            }
+        }
+
+        await db.SaveChangesAsync();
+    }
 }

@@ -142,6 +142,13 @@ public sealed record RaceFactSheet(
             .Select(r => (Result: r, Gain: lookup.GridPositionOf(r) - r.Position!.Value))
             .ToList();
 
+        // A session flagged classified can still carry no classified results — OpenF1 has rounds
+        // it never published a result for — and that must not fail the whole fact sheet.
+        if (gains.Count == 0)
+        {
+            return ("n/a", "n/a");
+        }
+
         var gainer = gains.OrderByDescending(g => g.Gain).ThenBy(g => g.Result.DriverNumber).First();
         var loser = gains.OrderBy(g => g.Gain).ThenBy(g => g.Result.DriverNumber).First();
 

@@ -1,3 +1,4 @@
+using F1Predictor.Application.Abstractions.AI;
 using F1Predictor.Application.Features.Seasons.Ingest;
 using F1Predictor.Domain.RaceData.Entities;
 using F1Predictor.Infrastructure.Database;
@@ -24,10 +25,12 @@ public sealed class SeasonIngestionCoordinatorJobTests
             .Options, domainEventsDispatcher: null);
 
     private static SeasonIngestionCoordinatorJob Job(
-        ApplicationDbContext db, FakeDateTimeProvider? clock = null, FakeIngestSeasonCommandHandler? ingestHandler = null) =>
+        ApplicationDbContext db, FakeDateTimeProvider? clock = null, FakeIngestSeasonCommandHandler? ingestHandler = null,
+        bool aiAvailable = true) =>
         new(db, ingestHandler ?? new FakeIngestSeasonCommandHandler(),
             Options.Create(new IngestionSchedulerOptions { PostSessionBufferMinutes = BufferMinutes }),
             clock ?? new FakeDateTimeProvider { UtcNow = FixedUtcNow },
+            Mock.Of<IAiCapabilities>(ai => ai.ChatAvailable == aiAvailable),
             NullLogger<SeasonIngestionCoordinatorJob>.Instance);
 
     private static void AddMeetingAndSession(ApplicationDbContext db, int year, int sessionKey, RaceSession session)
@@ -311,6 +314,30 @@ public sealed class SeasonIngestionCoordinatorJobTests
             It.IsAny<JobDataMap>(),
             It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task Execute_AiLayerOff_DoesNotTriggerAnalysisRefreshEvenWithSignal()
+    {
+        using var db = CreateDb();
+        AddMeetingAndSession(db, 2026, 20, new RaceSession
+        {
+            SessionKey = 20,
+            MeetingKey = 2,
+            SessionName = "Race",
+            SessionType = "Race",
+            DateStart = Now.AddMinutes(-(BufferMinutes + 1)),
+            IsClassified = false
+        });
+        await db.SaveChangesAsync();
+        var ingestHandler = new FakeIngestSeasonCommandHandler { Signal = ([20], GridStored: true) };
+
+        // Same trick as the no-signal test below: touching context.Scheduler throws, so a clean
+        // run proves the trigger was never attempted.
+        Func<Task> act = () => Job(db, ingestHandler: ingestHandler, aiAvailable: false).Execute(new FakeJobExecutionContext());
+
+        await act.Should().NotThrowAsync();
+        ingestHandler.HandledYears.Should().ContainSingle().Which.Should().Be(2026);
     }
 
     [Fact]

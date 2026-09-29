@@ -46,15 +46,31 @@ rehearsed on a disposable Neon branch first (see below) and then run against pro
 before merge, per the rule immediately below for every future migration. This one entry is past
 tense; the "apply by hand before merging" rule still stands for the next model change.
 
-Then, from `/scalar`: ingest a season → rebuild features → train → read the holdout table.
+**`AddModelTrainingRuns` is pending.** It adds one table, `ModelTrainingRuns`, plus its index.
+Rehearse it on a Neon branch and apply it to production by hand **before** the
+`ml-evaluation-harness` branch merges. Every `POST /api/models/train` writes to that table, so
+training in production fails until it exists.
 
-## AI (optional, local only)
+Then, from `/scalar`: ingest a season → rebuild features → train (optionally
+`?fromYear=2023&notes=…`) → read the holdout table → compare runs at `GET /api/models/runs`.
+
+## AI (optional — currently paused)
+
+**The AI layer is paused**: `appsettings.json` sets `Ai:Enabled=false`, which overrides whatever
+providers and keys user secrets carry. To resume, set `Ai:Enabled=true` as well as a provider:
+
+```bash
+dotnet user-secrets set "Ai:Enabled" "true" --project F1Predictor.WebApi
+```
 
 The analyst chat, driver-explanation narratives and generated race previews all need a chat
-model behind `IChatClient`. With no provider configured (`Ai:Provider` defaults to `None`) the
-API still runs — `/api/ai/status` reports `chatAvailable: false`, the explanation endpoint
-returns feature contributions with `narrative: null`, and the frontend hides the Analyst tab and
-the Generate/Regenerate buttons. To turn it on locally:
+model behind `IChatClient`. With AI off — paused, or no provider configured (`Ai:Provider`
+defaults to `None`) — the API still runs:
+- `/api/ai/status` reports `chatAvailable: false`;
+- the explanation endpoint returns feature contributions with `narrative: null`;
+- the frontend hides the Analyst tab, the preview card and the refresh button.
+
+To turn it on locally:
 
 ```bash
 winget install Ollama.Ollama
@@ -62,9 +78,8 @@ ollama pull llama3.1:8b
 dotnet user-secrets set "Ai:Provider" "Ollama" --project F1Predictor.WebApi
 ```
 
-Production stays `Ai:Provider=None` — there is no Ollama daemon to reach from Azure Container
-Apps, and a hosted provider is not wired up yet (`Ai:Provider=OpenAi` is accepted by configuration
-but fails fast at startup — see `ml-pipeline.md`). Production serves a stored preview read-only
+Without a hosted provider (see "AI provider (production)" below), production has no LLM to reach
+— there is no Ollama daemon in Azure Container Apps. Production serves a stored preview read-only
 through `GET /api/races/{sessionKey}/preview` — nothing in prod needs to reach an LLM to display
 one — but a preview generated against the usual local setup never gets there:
 `ConnectionStrings:LocalDb` is the Neon development branch, not production, so the row lands in

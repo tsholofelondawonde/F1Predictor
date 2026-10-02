@@ -132,7 +132,7 @@ public static class DependencyInjection
     /// trigger is not registered at all — a bare deployment does nothing new.</description></item>
     /// </list>
     /// </summary>
-    private static IServiceCollection AddScheduler(this IServiceCollection services, IConfiguration configuration)
+    internal static IServiceCollection AddScheduler(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<IngestionSchedulerOptions>(configuration.GetSection(IngestionSchedulerOptions.SectionName));
         services.Configure<AnalysisRefreshOptions>(configuration.GetSection(AnalysisRefreshOptions.SectionName));
@@ -154,7 +154,9 @@ public static class DependencyInjection
         services.AddQuartz(quartz =>
         {
             var ingestionJobKey = new JobKey(nameof(SeasonIngestionCoordinatorJob));
-            quartz.AddJob<SeasonIngestionCoordinatorJob>(job => job.WithIdentity(ingestionJobKey));
+            // Durable: Quartz rejects a trigger-less job unless it is stored durably, and either
+            // job can end up with no trigger below (a disabled scheduler, AI paused).
+            quartz.AddJob<SeasonIngestionCoordinatorJob>(job => job.WithIdentity(ingestionJobKey).StoreDurably());
 
             if (schedulerOptions.Enabled)
             {
@@ -166,7 +168,7 @@ public static class DependencyInjection
                     .StartNow());
             }
 
-            quartz.AddJob<AnalysisRefreshJob>(job => job.WithIdentity(AnalysisRefreshJob.Key));
+            quartz.AddJob<AnalysisRefreshJob>(job => job.WithIdentity(AnalysisRefreshJob.Key).StoreDurably());
 
             if (analysisRefreshOptions.Enabled && aiChannelAvailable)
             {

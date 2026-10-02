@@ -3,7 +3,7 @@
 ## Testing
 
 Two test projects live under `/tests/`: `F1Predictor.Application.Tests` (135 tests) and
-`F1Predictor.Infrastructure.Tests` (29 tests), both xunit 2.9.3 + FluentAssertions 8.9.0. Test
+`F1Predictor.Infrastructure.Tests` (30 tests), both xunit 2.9.3 + FluentAssertions 8.9.0. Test
 methods are named `Method_Scenario_Expectation`. Fakes are hand-written in preference to Moq —
 Moq is pinned in `Directory.Packages.props` for the rare case a hand-written fake isn't worth
 it (the Quartz `IScheduler` in `SeasonIngestionCoordinatorJobTests` is one). `F1Predictor.Application.Tests`

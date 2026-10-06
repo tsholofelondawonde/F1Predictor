@@ -57,6 +57,23 @@ public sealed class DeterministicRandom
         return -Math.Log(-Math.Log(uniform));
     }
 
+    /// <summary>
+    /// A standard normal draw by the Box–Muller transform. The second value of each pair is
+    /// discarded: simplicity matters more here than the one extra generator call.
+    /// </summary>
+    public double NextGaussian()
+    {
+        double uniform;
+
+        do
+        {
+            uniform = NextDouble();
+        }
+        while (uniform <= 0);
+
+        return Math.Sqrt(-2.0 * Math.Log(uniform)) * Math.Cos(2.0 * Math.PI * NextDouble());
+    }
+
     private ulong NextUInt64()
     {
         var result = ulong.RotateLeft(_s0 + _s3, 23) + _s0;

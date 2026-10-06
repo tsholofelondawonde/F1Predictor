@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+using Pgvector;
 
 #nullable disable
 
@@ -21,7 +22,50 @@ namespace F1Predictor.Infrastructure.Database.Migrations
                 .HasAnnotation("ProductVersion", "10.0.9")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "vector");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("F1Predictor.Domain.Analysis.Entities.RacePreviewNarrative", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("BasedOnLatestClassifiedSessionKey")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("GeneratedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("GridConfirmed")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Headline")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("SessionKey")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SessionKey")
+                        .IsUnique();
+
+                    b.ToTable("RacePreviewNarratives", "public");
+                });
 
             modelBuilder.Entity("F1Predictor.Domain.Predictions.DriverRaceFeature", b =>
                 {
@@ -67,6 +111,91 @@ namespace F1Predictor.Infrastructure.Database.Migrations
                         .IsUnique();
 
                     b.ToTable("DriverRaceFeatures", "public");
+                });
+
+            modelBuilder.Entity("F1Predictor.Domain.Predictions.ModelTrainingRun", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<double?>("BaselineAuc")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("FeatureNames")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<int>("FromYear")
+                        .HasColumnType("integer");
+
+                    b.Property<double?>("HoldoutAuc")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("HoldoutLogLoss")
+                        .HasColumnType("double precision");
+
+                    b.Property<int>("HoldoutSessionKey")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Target")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTimeOffset>("TrainedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TrainerName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("TrainingRaceCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TrainingRowCount")
+                        .HasColumnType("integer");
+
+                    b.Property<double>("ValidationAuc")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("ValidationAuprc")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("ValidationF1")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("ValidationLogLoss")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("ValidationPrecision")
+                        .HasColumnType("double precision");
+
+                    b.Property<int>("ValidationRaceCount")
+                        .HasColumnType("integer");
+
+                    b.Property<double>("ValidationRecall")
+                        .HasColumnType("double precision");
+
+                    b.Property<int>("ValidationRowCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Target", "TrainedAt");
+
+                    b.ToTable("ModelTrainingRuns", "public");
                 });
 
             modelBuilder.Entity("F1Predictor.Domain.RaceData.Entities.DriverEntry", b =>
@@ -188,6 +317,9 @@ namespace F1Predictor.Infrastructure.Database.Migrations
                     b.Property<int>("MeetingKey")
                         .HasColumnType("integer");
 
+                    b.Property<DateTimeOffset?>("QualifyingDateStart")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<int?>("QualifyingSessionKey")
                         .HasColumnType("integer");
 
@@ -297,6 +429,45 @@ namespace F1Predictor.Infrastructure.Database.Migrations
                     b.HasIndex("SessionKey");
 
                     b.ToTable("WeatherReadings", "public");
+                });
+
+            modelBuilder.Entity("F1Predictor.Infrastructure.Database.Entities.RaceEmbeddingRow", b =>
+                {
+                    b.Property<int>("SessionKey")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ContentHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Dimensions")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("EmbeddedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Vector>("Embedding")
+                        .IsRequired()
+                        .HasColumnType("vector(1536)");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("SessionKey");
+
+                    b.HasIndex("Embedding");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Embedding"), "hnsw");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("Embedding"), new[] { "vector_cosine_ops" });
+
+                    b.HasIndex("Model");
+
+                    b.ToTable("RaceEmbeddingRows", "public");
                 });
 #pragma warning restore 612, 618
         }

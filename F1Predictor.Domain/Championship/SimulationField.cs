@@ -13,6 +13,8 @@ internal sealed class SimulationField
     private readonly double[] _startingDriverPoints;
     private readonly int[] _startingDriverWins;
     private readonly int[] _driverTeam;
+    private readonly double[] _paceStandardError;
+    private readonly double[] _fittedLogStrengths;
 
     public SimulationField(ChampionshipStandings standings, IReadOnlyList<DriverForm> forms)
     {
@@ -29,6 +31,7 @@ internal sealed class SimulationField
         _startingDriverPoints = new double[DriverCount];
         _startingDriverWins = new int[DriverCount];
         _driverTeam = new int[DriverCount];
+        _paceStandardError = new double[DriverCount];
 
         LogStrengths = new double[DriverCount];
         DnfRates = new double[DriverCount];
@@ -47,7 +50,13 @@ internal sealed class SimulationField
 
             LogStrengths[i] = Math.Log(form?.Strength ?? 1.0);
             DnfRates[i] = form?.DnfRate ?? averageDnfRate;
+
+            // A pace estimate from n races is uncertain by roughly 1/sqrt(n); a driver with no
+            // record at all is uncertain by the full unit.
+            _paceStandardError[i] = 1.0 / Math.Sqrt(Math.Max(form?.Starts ?? 0, 1));
         }
+
+        _fittedLogStrengths = (double[])LogStrengths.Clone();
 
         DriverPoints = new double[DriverCount];
         DriverWins = new int[DriverCount];
@@ -61,6 +70,10 @@ internal sealed class SimulationField
 
     public int TeamCount { get; }
 
+    /// <summary>
+    /// The pace each driver races at in the current run: the fitted value, nudged by
+    /// <see cref="DrawSeasonForm"/>.
+    /// </summary>
     public double[] LogStrengths { get; }
 
     public double[] DnfRates { get; }
@@ -78,6 +91,25 @@ internal sealed class SimulationField
 
     /// <summary>Scratch buffer holding driver indices alongside <see cref="SortKeys"/>.</summary>
     public int[] SortedDrivers { get; }
+
+    /// <summary>
+    /// Redraws every driver's pace for one simulated season, around the fitted value.
+    /// </summary>
+    /// <remarks>
+    /// The fit is an estimate from a handful of races, not the truth, and treating it as exact
+    /// makes every remaining race an independent coin toss weighted the same way — which averages
+    /// out over a season and turns a modest edge into near-certainty. One draw per driver,
+    /// held for the whole remaining calendar, keeps the uncertainty about *who is faster* from
+    /// cancelling race by race. <paramref name="scale"/> of 0 switches it off.
+    /// </remarks>
+    public void DrawSeasonForm(DeterministicRandom random, double scale)
+    {
+        for (var i = 0; i < DriverCount; i++)
+        {
+            LogStrengths[i] = _fittedLogStrengths[i] +
+                              (scale > 0 ? scale * _paceStandardError[i] * random.NextGaussian() : 0.0);
+        }
+    }
 
     public void ResetToCurrent()
     {

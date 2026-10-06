@@ -1,6 +1,7 @@
 using F1Predictor.Application.Abstractions.Data;
 using F1Predictor.Application.Abstractions.MachineLearning;
 using F1Predictor.Application.Abstractions.Messaging;
+using Microsoft.EntityFrameworkCore;
 using SharedKernel;
 
 namespace F1Predictor.Application.Features.Predictions.GetHoldout;
@@ -42,8 +43,40 @@ internal sealed class GetHoldoutPredictionsQueryHandler(
             season.Holdout.MeetingName,
             season.Holdout.CircuitShortName,
             season.Holdout.DateStart,
-            drivers);
+            drivers,
+            await ModelWarningAsync(season.Holdout, cancellationToken));
 
         return Result.Success(response);
+    }
+
+    /// <summary>
+    /// Both targets are trained and recorded together with the same holdout, so the newest run
+    /// row speaks for the models on disk.
+    /// </summary>
+    private async Task<string?> ModelWarningAsync(SeasonRace holdout, CancellationToken cancellationToken)
+    {
+        var latest = await context.ModelTrainingRuns
+            .AsNoTracking()
+            .OrderByDescending(r => r.TrainedAt)
+            .ThenByDescending(r => r.Id)
+            .Select(r => new { r.HoldoutSessionKey, r.FromYear, r.Year })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (latest is null)
+        {
+            return "No training run is recorded, so it can't be confirmed these models held this " +
+                "race out. Retrain to be sure the predictions below are an honest test.";
+        }
+
+        if (latest.HoldoutSessionKey != holdout.SessionKey)
+        {
+            var window = latest.FromYear == latest.Year ? $"{latest.Year}" : $"{latest.FromYear}-{latest.Year}";
+
+            return $"The current models were last trained on {window} with a different race held out, " +
+                $"so {holdout.MeetingName} may be in their training data. Retrain with year={holdout.Year} " +
+                "for an honest test.";
+        }
+
+        return null;
     }
 }

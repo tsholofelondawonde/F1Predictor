@@ -4,6 +4,8 @@ import { IngestSeasonPanel } from "@/features/seasons/components/IngestSeasonPan
 import { RebuildFeaturesButton } from "@/features/seasons/components/RebuildFeaturesButton";
 import { RaceList } from "@/features/seasons/components/RaceList";
 import { TrainModelsPanel } from "@/features/training/components/TrainModelsPanel";
+import { AnalysisRefreshButton } from "@/features/analysis/components/AnalysisRefreshButton";
+import { WhenAiAvailable } from "@/shared/components/WhenAiAvailable";
 
 const title = "Dashboard";
 const description =
@@ -34,6 +36,9 @@ export default function DashboardPage() {
       <IngestSeasonPanel />
       <RebuildFeaturesButton />
       <TrainModelsPanel />
+      <WhenAiAvailable>
+        <AnalysisRefreshButton />
+      </WhenAiAvailable>
       <RaceList />
     </div>
   );

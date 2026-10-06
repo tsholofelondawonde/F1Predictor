@@ -74,20 +74,93 @@ count, this filter is the first thing to check.
 Two independent binary classifiers over the same five features, differing only in label:
 
 ```
-Concatenate("Features", GridPosition, QualiGapToPole, PitStopCount, AvgPitStopDuration, Rainfall)
-  -> NormalizeMinMax("Features")
-  -> SdcaLogisticRegression(labelColumnName: "Label")
+mlContext.Auto()
+  .CreateBinaryClassificationExperiment(MaxExperimentTimeInSeconds: 30, OptimizingMetric: F1Score)
+  .Execute(trainView, validationView, labelColumnName: "Label")
 ```
 
-80/20 split, seed 42 for reproducibility. Models are saved to the directory configured at
-`MachineLearning:ModelDirectory` (default `models/`).
+AutoML searches over SDCA, LBFGS, LightGBM and FastTree, building its own
+featurization (concatenation, missing-value handling, calibration) internally — there is no
+longer a hand-built `Concatenate`/`NormalizeMinMax` step. **FastForest is removed from the
+search** (`settings.Trainers.Remove`): it is the one uncalibrated binary trainer, so it emits no
+`Probability` column, and evaluation, `MlNetRacePredictor` and `ModelExplainer` all read one.
+When it won a search, training failed with "Probability column 'Probability' not found". `ModelTrainingResult.TrainerName`
+records which trainer the search picked for each target; the two classifiers may land on
+different trainers since they are fit independently.
 
-**Read AUC and F1, never accuracy.** Podium is ~15% of rows, so "always predict no" scores
-~85% accuracy while being useless. `TrainModelsResponse` carries this warning in the payload
-itself for that reason. AUC near 0.5 is noise; grid position alone should clear 0.65.
+**Seasons.** `POST /api/models/train?year=&fromYear=` trains on every Grand Prix from `fromYear`
+(default `year`) through `year`. The holdout is always the latest race **of `year` itself**
+(`SeasonFeatureSet.Holdout`), so any window holds out the same race the holdout page scores.
 
-Not AutoML: ML.NET's AutoML API is still preview, and a working baseline should not depend
-on a shifting surface. Swapping it in later means replacing pipeline construction only.
+**The split is by race and by time, never by row** (`Features/Predictions/Evaluation/RaceTimeSplit.cs`).
+With the holdout set aside, the remaining races are ordered by date. The latest ~20% (at least
+two) validate, and everything earlier trains. The split lives in Application because it is
+policy; `IModelTrainer` receives a ready-made `TrainingData(Train, Validation)` and never
+re-splits. It replaced a random 80/20 row split that leaked in two ways:
+- a race's rows landed on both sides, so the model was "validated" on races it had partly seen;
+- later races trained a model that was then scored on earlier ones.
+
+A prediction is always about a race that hasn't happened, so validation has to look like that.
+Five races (holdout + 2 train + 2 validation) is the minimum to train.
+
+**Metrics come from the train-only fit; the shipped model is refitted.** `MlNetModelTrainer`
+evaluates `BestRun.Model` on the validation races. It then refits `BestRun.Estimator` on train +
+validation and saves *that*, so the served model uses every non-holdout race.
+
+**Every run is recorded** in `ModelTrainingRuns` (append-only, one row per target) and listed
+newest first by `GET /api/models/runs?target=&take=`. Each row holds:
+- the season window, the trainer and the feature names
+- validation AUC, F1, log loss, AUPRC, precision and recall
+- `BaselineAuc`: grid order alone on the same validation rows
+- holdout AUC and log loss, scored through the saved files via `IRacePredictor`
+- `?notes=` from the train call
+
+The response adds `AucOverBaseline`. Log loss is in **bits** throughout — ML.NET's unit, pinned by
+`LogLossUnitTests` — so validation and holdout numbers compare directly. The model files are
+still overwritten each run; the table is the experiment log, not a model registry.
+
+The holdout page (`GetHoldoutPredictionsQueryHandler`) sets `ModelWarning` when the newest run
+held out a different race, or when no run is recorded. The predictions are still served, but
+they may be recitals of training data rather than a test.
+
+Models are saved to the directory configured at `MachineLearning:ModelDirectory` (default
+`models/`).
+
+**Reproducibility is best-effort, not guaranteed**, unlike the rest of this codebase's stricter
+determinism stance (see the Championship Forecasting section's `DeterministicRandom`). ML.NET's
+AutoML only exposes a wall-clock time budget, not a trial-count knob, so re-running training is
+not guaranteed to reach the same trainer or metrics bit-for-bit — this is an accepted trade-off
+for search quality within a bounded time, not an oversight.
+
+**Read AUC against the baseline, plus log loss and F1 — never accuracy.** Podium is ~15% of rows,
+so "always predict no" scores ~85% accuracy while being useless. `TrainModelsResponse` carries
+this warning in the payload itself for that reason. AUC near 0.5 is noise; a model that can't
+beat `BaselineAuc` has learned nothing the grid didn't already say.
+
+**Known leakage still in the feature set** (deliberately left for the feature-engineering work):
+`PitStopCount`, `AvgPitStopDuration` and `Rainfall` are only known *after* the race. Pit count
+also tracks the label, because a retiree stops less. At preview time they are replaced by season
+averages and rain = 0, so the model is served inputs it never trained on. Expect validation AUC
+to *drop* when they are removed; that drop is the honest number.
+
+### How to add (or remove) a feature
+
+Every touch point, in order:
+1. `Domain/Predictions/DriverRaceFeature.cs`: the property, and its rule in `Create`. It must use
+   only information available **before the race starts**. A rolling or form feature may only
+   look at races strictly earlier than the row's own date.
+2. `RebuildFeaturesCommandHandler`, if the rule needs raw data it doesn't load yet.
+3. A migration (`dotnet ef migrations add …`, see `setup.md`). Rehearse it on a Neon branch and
+   apply it to production by hand before merge.
+4. `Infrastructure/MachineLearning/RaceFeatureInput.cs`: the property, `From`, `FeatureNames` and
+   `ValuesByName`.
+5. **Train/serve parity**: the next-race preview builds feature rows in memory
+   (`PreviewNextRace/StartingGridProjection.cs`, `NextRaceContext`), and the new feature must be
+   computed there the same way. A feature that exists only at training time is the leak above
+   all over again.
+6. Tests: `DriverRaceFeatureTests` for the rule, and the explainer's `SyntheticModels` if the
+   feature count matters there.
+7. Rebuild → train with `?notes=` describing the change → compare in `GET /api/models/runs`.
 
 ## Next-Race Preview
 
@@ -128,10 +201,24 @@ is decided by orders, not margins. So:
      because P(fifteenth) for a quick driver is so small that one bad race outweighs six wins.
      It also removes an asymmetry — censoring retirements protects a driver who crashes out
      while punishing one who limps home. Modelling only the points-paying positions fixes both.
+   - **Gamma-prior regularisation** (MAP update, `PriorShape`/`PriorRate`, mean 1). A plain
+     maximum-likelihood fit has no finite answer for a driver, or a one-two team, who has beaten
+     everyone in every race: strengths ran off to thousands of times the field's, and the
+     simulator reported 100% title odds for the leader (and their team) and 0% for everyone else.
+     Pinned by `DriverFormModelTests` and `ChampionshipSimulatorTests`.
 2. **`ChampionshipSimulator`** plays the remaining calendar out 10,000 times, sampling each
    session's order via the Gumbel-max trick (one sort per session, not n sequential draws),
    dropping sampled retirements to the back with nothing, awarding real points, and settling
    both tables by count-back. Title probability is the share of seasons an entrant finished top.
+   **Pace uncertainty.** The fitted strengths are estimates from ~14 races, not known values.
+   Treating them as exact made a clear-but-beatable lead (an 84-point gap with 183 on offer)
+   read 99.97% / 0.03%, because independent races average out over a season. So each simulated
+   season first redraws every driver's log-strength around the fit, with standard error
+   `1/sqrt(starts)` (`SimulationField.DrawSeasonForm`, scaled by
+   `ChampionshipSimulator.DefaultPaceUncertainty`; 0 turns it off), and holds that draw for the
+   whole remaining calendar. The draw uses the same seeded generator, so results stay repeatable.
+   The web app also shows title odds as `>99%` / `<1%` (`formatTitleOdds`) unless a value is
+   exactly 0 or 1.
 3. **`TitleScenarioAnalyser`** answers the same question as arithmetic instead: who is
    mathematically alive, what the leader needs to clinch, and — assuming a contender wins out —
    the best average finish the leader could still manage and lose.
@@ -149,3 +236,119 @@ a shared seed alone would not keep published odds stable.
 upgrades, penalties, weather, or a driver's record at a given circuit. The
 `ChampionshipForecastResponse.Method` field carries this caveat in the payload, in the same
 spirit as `TrainModelsResponse.MetricGuidance`.
+
+## Explaining a prediction
+
+AutoML may pick any of four trainers per target (SDCA, LBFGS, LightGBM, FastTree — see Model
+Training above), and the two committed models did not land on the same one: podium is a
+linear model (calibrated `LinearBinaryModelParameters`), points-finish is `FastTree`. Reading
+coefficients only works for the linear case, so `F1Predictor.Infrastructure/MachineLearning/
+ModelExplainer.cs` uses ML.NET's `CalculateFeatureContribution` instead — it is the one
+explanation method every trainer in the search space actually supports.
+
+- Contributions are computed with `normalize: false`, so they stay on the score scale rather than
+  a [0,1]-normalised one — that is what makes them comparable between drivers and, for a linear
+  model, means `Σ contributions + bias == score` (cross-checked in
+  `tests/F1Predictor.Infrastructure.Tests`). For a tree model the contributions are per-path, not
+  summands of a linear equation, but they are still signed and comparable the same way.
+- Feature slot names are read off the saved model's feature column schema — the column
+  `predictor.FeatureColumnName` names, which AutoML calls `__Features__`, not a literal
+  `Features` — via `DataViewSchema.Column.GetSlotNames`, not hand-maintained, so they can never
+  drift from what the model was actually trained on; `RaceFeatureInput.FeatureNames` is only the
+  fallback when a model has no slot names at all.
+- `Direction` ("helps"/"hurts"/"neutral") is derived in the handler
+  (`TargetExplanationResponse.DirectionOf`) from the sign of the contribution — the model itself
+  has no notion of direction, only a signed number.
+- Finding the underlying trainer to hand to `CalculateFeatureContribution` needs an adapter: every
+  trainer's `Fit()` returns a `BinaryPredictionTransformer<TModel>` closed over its own model type,
+  and CLR variance can't cast that to
+  `ISingleFeaturePredictionTransformer<ICalculateFeatureContribution>` even though the runtime
+  instance supports it. `ModelExplainer.FindPredictionTransformer` walks the transformer chain from
+  the end and wraps the match in `FeatureContributionTransformerAdapter` to bridge the gap — this
+  is a real ML.NET limitation, not a shortcut.
+- A narrative sentence on top of the contribution table is optional: it only appears when an AI
+  provider is configured (see "AI analyst" below), and is cached for 10 minutes via
+  `CachedNarrative` (`Microsoft.Extensions.Caching.Hybrid`), keyed on
+  `explain:{sessionKey}:{driverNumber}:{gridConfirmed}:{model}` so the same driver, the same
+  race, the same grid state (projected vs. confirmed) and the same chat model don't re-prompt
+  the LLM on every page view — but a grid that flips from projected to confirmed does.
+
+## AI analyst
+
+> **Paused.** `appsettings.json` sets `Ai:Enabled=false` while work focuses on the model. The
+> code and the pgvector schema are intact; set `Ai:Enabled=true` (plus a provider) to resume.
+
+An `IChatClient` (`Microsoft.Extensions.AI`) sits beside the classifiers and the simulator. It is
+backed by OllamaSharp against a local Ollama daemon (`Ai:Provider=Ollama`) or by the OpenAI SDK
+(`Ai:Provider=OpenAi`, which also accepts any OpenAI-compatible endpoint). It narrates and
+answers questions; it never predicts — every number it states must come from a feature
+contribution, a query handler result, or a tool call, never from the model's own "reasoning".
+
+`Ai:Provider` defaults to `None`, which fails closed exactly like `Security:ApiKey`:
+- An `UnavailableChatClient` is registered, so handler constructors always resolve.
+- Handlers guard on `IAiCapabilities.ChatAvailable` before ever calling the client.
+
+Embeddings (`Ai:Embeddings:Provider`, pgvector-backed race search) are gated the same way on
+`EmbeddingsAvailable`.
+
+**`Ai:Enabled` is the master switch.** `false` is folded into both provider settings as `None`,
+by `AiOptions.ApplyMasterSwitch` (options post-configure) and `AiOptions.Read` (the eager reads
+in `AddAi`/`AddScheduler`). Every downstream `Provider` check therefore keeps working unchanged,
+and keys in user secrets need not be deleted to turn AI off. With AI off:
+- the ingestion coordinator does not trigger `AnalysisRefreshJob`;
+- `/api/races/{sessionKey}/similar` returns `Analysis.AiUnavailable`;
+- the frontend hides AI surfaces through `WhenAiAvailable`.
+
+`AiOptions` defaults: `Ollama.Endpoint` `http://localhost:11434`, `Ollama.Model` `llama3.1:8b` (any
+Ollama model with tool support), `Ollama.ContextLength` **16384** — Ollama's own default of 4096 is
+too small once a system prompt and a couple of tool results are in context, and the failure mode
+is a silently truncated conversation, not an error. `TimeoutSeconds` 120 with **no retries**: a
+generation that already took a minute and failed is worse to retry than to fail. `MaxToolIterations`
+6 caps tool-call round trips per request. `Temperature` 0.2 — narration should be repeatable, not
+creative.
+
+**Tools** (`F1Predictor.Application/Features/Analysis/AnalystTools.cs`) are thin `AIFunction`s over
+the *existing* query handlers, so the analyst can only ever surface numbers the rest of the API
+already serves:
+
+| Tool | Returns |
+|---|---|
+| `get_next_race_preview` | Podium/points probabilities for every driver in the next Grand Prix, and whether the grid is real or projected |
+| `explain_driver(driverNumber)` | The per-feature contribution breakdown behind one driver's next-race prediction |
+| `get_standings` | Top-10 drivers' and all constructors' championship tables |
+| `get_championship_forecast` | Top-8 title odds from the Monte Carlo simulation, with the method caveat |
+| `get_title_scenarios(topN=5)` | What each leading contender needs to win the drivers' title |
+| `get_season_races` | The season calendar with session keys, sprint/classified flags |
+| `get_race_predictions(sessionKey)` | Per-driver predicted probability vs. actual result for a classified race |
+
+Each tool returns a small DTO rounded to 2 dp and keyed by driver acronym rather than full name, so
+an 8B model's context survives a question that needs two or three tool calls. A failed lookup comes
+back as `{ unavailable: true, reason }`, never an exception — the model says "the model doesn't
+track that" instead of the request dying. The season is bound from the command, not chosen by the
+model, so it cannot wander into another year.
+
+**Prompt rules** (`AnalystPrompts.cs`) are composable blocks — Identity, Grounding, NoSpeculation,
+Brevity — mixed with one task-specific block per use case (driver explanation, race preview,
+analyst chat), so the "say 'the model', not 'I predict'" and "don't speculate about weather,
+upgrades, penalties" rules are defined exactly once and shared by all three.
+
+**SSE event vocabulary** (`POST /api/ai/ask`, `AnalystStream.Map`): `status` while a tool call is in
+flight (a human-readable line from `AnalystTools.StatusFor`, e.g. "Running the title odds…"),
+`delta` for each text fragment, `done` at the end of a normal stream, `error` on a transport fault
+(logged server-side with the real exception; the client only ever sees a generic message).
+
+**Preview persistence**: `GenerateRacePreviewCommand` writes (upserts) a `RacePreviewNarrative` row
+per session key; `GetRacePreviewQuery` reads it back. This is what lets production — where
+`Ai:Provider` is `None` — still serve a preview: whichever environment generated it (typically a
+developer running Ollama locally) writes the row once, and prod's `GET` is read-only from then on;
+only the `POST` route requires `ChatAvailable` and returns `Analysis.AiUnavailable` otherwise.
+
+**The `Stale` rule** (`GetRacePreviewQueryHandler`): a preview is stale when the real starting grid
+has since been published for a preview generated from a projected one, **or** a newer race in the
+previewed race's own season has been classified since generation
+(`narrative.BasedOnLatestClassifiedSessionKey` vs. the season's current latest classified session
+key). A `null` basis — recorded when the preview was generated before any race in that season had
+been classified — becomes stale the moment any classified session exists, not just a later one.
+The comparison is deliberately scoped to the previewed race's season: `BasedOnLatestClassifiedSessionKey`
+was set from `SeasonChampionship.LatestClassifiedSessionKey`, which only looks at that season, so
+comparing against a different season's latest classified race would flag every preview stale.

@@ -3,7 +3,7 @@ updates:
   - package-ecosystem: nuget
     directory: "/"
     schedule:
-      interval: weekly
+      interval: monthly
     groups:
       dotnet:
         patterns: ["*"]
@@ -12,7 +12,7 @@ updates:
   - package-ecosystem: npm
     directory: "/F1Predictor.Web"
     schedule:
-      interval: weekly
+      interval: monthly
     groups:
       next:
         patterns: ["next", "eslint-config-next"]
@@ -23,4 +23,4 @@ updates:
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
-      interval: weekly
+      interval: monthly

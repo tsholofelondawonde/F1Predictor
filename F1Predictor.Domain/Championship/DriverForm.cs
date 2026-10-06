@@ -73,6 +73,25 @@ public static class DriverFormModel
     /// <summary>Floor for a driver who never once beat anybody, so their strength stays positive.</summary>
     private const double MinimumStrength = 1e-3;
 
+    /// <summary>
+    /// Shape and rate of a Gamma prior on every strength, with a mean of <c>shape / rate = 1</c>
+    /// — the field average the fit is normalised to.
+    /// </summary>
+    /// <remarks>
+    /// Without it this is a plain maximum-likelihood fit, and a plain fit has no answer for a driver
+    /// (or a pair in one team) who has beaten everybody in every race: the likelihood only ever
+    /// improves as their strength grows and everyone else's shrinks. Left to run, it sent the leader
+    /// to thousands of times the field's pace, which the simulator then turned into a 100% title
+    /// probability for them and 0% for everyone else — a statement about the optimiser, not the
+    /// season. The prior is the MAP update of Caron and Doucet (2012): it adds
+    /// <c>shape - 1</c> to each numerator and <c>rate</c> to each denominator, which keeps the MM
+    /// iteration monotone, makes the estimate finite, and shrinks a thin record toward average.
+    /// It is deliberately light, a fraction of one race's evidence, so a genuinely quick driver
+    /// still reads as quick.
+    /// </remarks>
+    private const double PriorShape = 1.5;
+    private const double PriorRate = 0.5;
+
     public static IReadOnlyList<DriverForm> Fit(IReadOnlyList<RaceOutcome> races)
     {
         ArgumentNullException.ThrowIfNull(races);
@@ -201,9 +220,7 @@ public static class DriverFormModel
 
         for (var i = 0; i < strengths.Length; i++)
         {
-            updated[i] = numerators[i] > 0 && denominators[i] > 0
-                ? numerators[i] / denominators[i]
-                : MinimumStrength;
+            updated[i] = (numerators[i] + PriorShape - 1) / (denominators[i] + PriorRate);
         }
 
         // Only ratios are identified, so pin the scale by making the field average 1.

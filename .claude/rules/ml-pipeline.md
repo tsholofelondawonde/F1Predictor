@@ -201,6 +201,11 @@ is decided by orders, not margins. So:
      because P(fifteenth) for a quick driver is so small that one bad race outweighs six wins.
      It also removes an asymmetry — censoring retirements protects a driver who crashes out
      while punishing one who limps home. Modelling only the points-paying positions fixes both.
+   - **Gamma-prior regularisation** (MAP update, `PriorShape`/`PriorRate`, mean 1). A plain
+     maximum-likelihood fit has no finite answer for a driver, or a one-two team, who has beaten
+     everyone in every race: strengths ran off to thousands of times the field's, and the
+     simulator reported 100% title odds for the leader (and their team) and 0% for everyone else.
+     Pinned by `DriverFormModelTests` and `ChampionshipSimulatorTests`.
 2. **`ChampionshipSimulator`** plays the remaining calendar out 10,000 times, sampling each
    session's order via the Gumbel-max trick (one sort per session, not n sequential draws),
    dropping sampled retirements to the back with nothing, awarding real points, and settling

@@ -380,6 +380,9 @@ appsettings.*.local.json
 .env.*
 !.env.example
 
+# Neon CLI local link/config
+.neon
+
 # .NET User Secrets
 **/secrets.json
 
@@ -396,6 +399,9 @@ OTEL_ASPIRE_MIGRATION_PROMPT.md
 
 # Claude Code skills (local only)
 .claude/skills/
+
+# Subagent-driven-development scratch workspace (ledgers, briefs, review packages)
+/.superpowers/
 
 # Vendored agent skills + lockfile — per-developer AI tooling, not project source
 /.agents/skills/

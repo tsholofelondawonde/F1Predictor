@@ -97,6 +97,14 @@ export function HoldoutView({ year }: HoldoutViewProps) {
       <DataStalenessBanner status={dataStatus} />
 
       <h1 className="text-xl font-semibold">Holdout Predictions</h1>
+      {data.modelWarning && (
+        <div className="rounded-(--radius) border border-(--color-podium)/40 border-l-4 bg-(--color-podium)/10 p-4 text-sm">
+          <p className="font-mono text-xs font-semibold uppercase tracking-wider text-(--color-podium)">
+            Not necessarily an honest test
+          </p>
+          <p className="mt-1 text-(--color-foreground)">{data.modelWarning}</p>
+        </div>
+      )}
       <Card title={`${data.meetingName} — ${data.circuitShortName} (${data.year} holdout)`}>
         <PredictionsTable drivers={data.drivers} />
       </Card>

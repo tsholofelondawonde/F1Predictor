@@ -51,7 +51,10 @@ public class ApplicationDbContextFactory : IDesignTimeDbContextFactory<Applicati
 
         // Same SSL normalisation the runtime applies (see NpgsqlConnectionStrings.RequireSsl):
         // harmless against the credential-less placeholder above, which never connects.
-        optionsBuilder.UseNpgsql(NpgsqlConnectionStrings.RequireSsl(connectionString));
+        // UseVector() here matters even though this factory never opens a connection: without
+        // it, `dotnet ef migrations add` builds its model without the vector type mapping and
+        // generates RaceEmbeddingRow.Embedding as an unmapped/opaque column instead of `vector(n)`.
+        optionsBuilder.UseNpgsql(NpgsqlConnectionStrings.RequireSsl(connectionString), npgsqlOptions => npgsqlOptions.UseVector());
 
         // Log the configuration details for debugging
         // Pass null for domainEventsDispatcher since it's not available at design time

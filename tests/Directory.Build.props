@@ -1,0 +1,9 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <!-- Test code legitimately uses literal strings, inline arrays and underscores in names. -->
+    <NoWarn>$(NoWarn);CA1861;CA1305;CA1307;CA2000;MA0011;S1144;S2094;CA5394;MA0006</NoWarn>
+  </PropertyGroup>
+</Project>

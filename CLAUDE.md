@@ -4,7 +4,8 @@ A Clean Architecture .NET solution that predicts F1 race outcomes from OpenF1 da
 ML.NET binary classifiers (podium, points-finish) trained on engineered per-driver features,
 served over a minimal API with a Next.js frontend (the "GridMind" product front end). It
 also looks forwards: next-Grand-Prix previews, live championship tables, and a Monte Carlo
-season simulator for title odds.
+season simulator for title odds. An AI layer sits beside the ML layer: `IChatClient` narrates
+model output and answers questions through tools; it never predicts.
 
 > Naming: the solution, namespaces, and repo are **F1Predictor**; the user-facing web app is
 > branded **GridMind**. Both names are intentional.

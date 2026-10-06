@@ -21,16 +21,6 @@ internal sealed class RaceFeatureInput
     [ColumnName("Label")]
     public bool Label { get; set; }
 
-    /// <summary>The five columns concatenated into the "Features" vector, in pipeline order.</summary>
-    public static string[] FeatureColumns { get; } =
-    [
-        nameof(GridPosition),
-        nameof(QualiGapToPole),
-        nameof(PitStopCount),
-        nameof(AvgPitStopDuration),
-        nameof(Rainfall)
-    ];
-
     public static RaceFeatureInput From(DriverRaceFeature feature, bool label = false) => new()
     {
         GridPosition = feature.GridPosition,
@@ -39,5 +29,24 @@ internal sealed class RaceFeatureInput
         AvgPitStopDuration = feature.AvgPitStopDuration,
         Rainfall = feature.Rainfall,
         Label = label
+    };
+
+    /// <summary>
+    /// Feature columns in declaration order — the order AutoML concatenates them into
+    /// <c>Features</c>, and the fallback when a saved model carries no slot names.
+    /// </summary>
+    public static readonly string[] FeatureNames =
+    [
+        nameof(GridPosition), nameof(QualiGapToPole), nameof(PitStopCount), nameof(AvgPitStopDuration), nameof(Rainfall)
+    ];
+
+    /// <summary>Raw value of each feature, by the same names, for reporting alongside a contribution.</summary>
+    public static Dictionary<string, float> ValuesByName(DriverRaceFeature feature) => new(StringComparer.Ordinal)
+    {
+        [nameof(GridPosition)] = feature.GridPosition,
+        [nameof(QualiGapToPole)] = feature.QualiGapToPole,
+        [nameof(PitStopCount)] = feature.PitStopCount,
+        [nameof(AvgPitStopDuration)] = feature.AvgPitStopDuration,
+        [nameof(Rainfall)] = feature.Rainfall
     };
 }

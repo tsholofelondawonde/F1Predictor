@@ -1,8 +1,11 @@
 "use client";
 
 import { useCallback } from "react";
+import { RacePreviewNarrative } from "@/features/analysis/components/RacePreviewNarrative";
+import { WhenAiAvailable } from "@/shared/components/WhenAiAvailable";
 import { getNextRacePreview } from "@/features/predictions/predictions-service";
 import { PreviewTable } from "@/features/predictions/components/PreviewTable";
+import { QualifyingReadyBanner } from "@/features/predictions/components/QualifyingReadyBanner";
 import { getDataStatus } from "@/features/seasons/seasons-service";
 import { Card } from "@/shared/components/Card";
 import { Countdown } from "@/shared/components/Countdown";
@@ -106,8 +109,14 @@ export function NextRaceView({ year }: NextRaceViewProps) {
         </p>
       )}
 
+      {data.qualifyingReadyToIngest && <QualifyingReadyBanner year={year} onIngested={refresh} />}
+
+      <WhenAiAvailable>
+        <RacePreviewNarrative sessionKey={data.sessionKey} />
+      </WhenAiAvailable>
+
       <Card>
-        <PreviewTable drivers={data.drivers} gridConfirmed={data.gridConfirmed} />
+        <PreviewTable drivers={data.drivers} gridConfirmed={data.gridConfirmed} year={year} />
       </Card>
 
       <LiveFooter lastUpdated={lastUpdated} refreshing={refreshing} onRefresh={refresh} />

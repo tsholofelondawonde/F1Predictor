@@ -38,6 +38,5 @@ jobs:
       - name: Build
         run: dotnet build F1Predictor.slnx --configuration Release --no-restore
 
-      # Uncomment when test projects are added under /tests/
-      # - name: Test
-      #   run: dotnet test F1Predictor.slnx --configuration Release --no-build --verbosity normal
+      - name: Test
+        run: dotnet test F1Predictor.slnx --configuration Release --no-build --verbosity normal

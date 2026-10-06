@@ -6,13 +6,20 @@ namespace F1Predictor.Application.Features.Predictions.GetHoldout;
 /// <param name="CircuitShortName">Short circuit name.</param>
 /// <param name="DateStart">When the race started.</param>
 /// <param name="Drivers">One row per classified driver, ordered by actual finishing position.</param>
+/// <param name="ModelWarning">
+/// Set when the models currently on disk can't be confirmed to have held this race out — they
+/// were last trained for a different season, or before training runs were recorded. The
+/// predictions are still served, but they may be a recital of training data rather than an
+/// honest test. Null when the latest recorded run held out exactly this race.
+/// </param>
 public sealed record HoldoutPredictionsResponse(
     int Year,
     int SessionKey,
     string MeetingName,
     string CircuitShortName,
     DateTimeOffset DateStart,
-    IReadOnlyList<DriverPrediction> Drivers);
+    IReadOnlyList<DriverPrediction> Drivers,
+    string? ModelWarning);
 
 /// <param name="DriverNumber">Car number.</param>
 /// <param name="FullName">Driver's full name, or a car-number placeholder if no entry list was ingested.</param>

@@ -13,6 +13,10 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageVersion>
+    <PackageVersion Include="Microsoft.Extensions.AI" Version="10.10.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.Abstractions" Version="10.10.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.10.0" />
+    <PackageVersion Include="OpenAI" Version="2.14.0" />
     <PackageVersion Include="Microsoft.Extensions.Caching.Hybrid" Version="10.10.0" />
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.12" />
@@ -53,8 +57,12 @@
     <PackageVersion Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.11" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.12" />
+    <!-- Pinned above the 9.0.4 range covered by GHSA-73j8-2gch-69rq, which Microsoft.ML.AutoML
+         would otherwise drag in transitively. -->
+    <PackageVersion Include="Microsoft.Bcl.Memory" Version="10.0.12" />
     <PackageVersion Include="Microsoft.ML" Version="5.0.0" />
+    <PackageVersion Include="Microsoft.ML.AutoML" Version="0.23.0" />
     <PackageVersion Include="Microsoft.Extensions.ML" Version="5.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
     <PackageVersion Include="Microsoft.NET.Runtime.WebAssembly.Wasi.Sdk" Version="10.0.9" />
@@ -63,6 +71,15 @@
     <PackageVersion Include="Moq" Version="4.20.72" />
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
+    <!-- Npgsql.EntityFrameworkCore.PostgreSQL 10.0.2 has no native mapping for the Postgres
+         `vector` type (verified against its assembly and the 10.0 release notes) — Pgvector.EntityFrameworkCore
+         supplies the EF value converter/type mapping, and pulls in the bare Pgvector package
+         (the `Vector` CLR type) as its own dependency; pinned explicitly here only because
+         CentralPackageTransitivePinningEnabled requires every transitive package to have a
+         version pin. -->
+    <PackageVersion Include="Pgvector.EntityFrameworkCore" Version="0.3.0" />
+    <PackageVersion Include="Pgvector" Version="0.3.2" />
+    <PackageVersion Include="OllamaSharp" Version="5.4.30" />
     <PackageVersion Include="Radzen.Blazor" Version="10.2.3" />
     <PackageVersion Include="Scalar.AspNetCore" Version="2.16.6" />
     <PackageVersion Include="Scrutor" Version="7.0.0" />

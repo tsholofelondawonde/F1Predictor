@@ -37,12 +37,17 @@ export function TrainModelsPanel() {
       {status === "success" && result && (
         <div className="mt-4 space-y-3">
           <p className="text-sm text-(--color-muted)">
-            Trained on {result.racesTrainedOn} races ({result.trainingRows} rows). Holdout race:{" "}
+            Trained on {result.racesTrainedOn} races ({result.trainingRows} rows), validated on the latest{" "}
+            {result.validationRaceNames.length}: {result.validationRaceNames.join(", ")}. Holdout race:{" "}
             <span className="font-medium">{result.holdoutRaceName}</span>.
           </p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <ModelMetricCard label="Podium" result={result.podium} />
-            <ModelMetricCard label="Points finish" result={result.pointsFinish} />
+            <ModelMetricCard label="Podium" result={result.podium} evaluation={result.podiumEvaluation} />
+            <ModelMetricCard
+              label="Points finish"
+              result={result.pointsFinish}
+              evaluation={result.pointsFinishEvaluation}
+            />
           </div>
           <p className="rounded-(--radius) bg-(--color-surface-hover) p-3 text-xs text-(--color-muted)">
             {result.metricGuidance}

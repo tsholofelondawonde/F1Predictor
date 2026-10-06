@@ -5,61 +5,75 @@ using Microsoft.EntityFrameworkCore;
 namespace F1Predictor.Application.Features.Predictions;
 
 /// <summary>
-/// A season's feature rows plus the race metadata needed to split them, loaded once.
-/// Shared by training and holdout reporting so both agree on which race is held out.
+/// Feature rows for a window of seasons plus the race metadata needed to split them, loaded
+/// once. Shared by training and holdout reporting so both agree on which race is held out.
 /// </summary>
 internal sealed class SeasonFeatureSet
 {
-    private SeasonFeatureSet(int year, IReadOnlyList<DriverRaceFeature> features, IReadOnlyList<SeasonRace> races)
+    private SeasonFeatureSet(int fromYear, int year, IReadOnlyList<DriverRaceFeature> features, IReadOnlyList<SeasonRace> races)
     {
+        FromYear = fromYear;
         Year = year;
         Features = features;
         Races = races;
     }
 
+    /// <summary>First season in the window.</summary>
+    public int FromYear { get; }
+
+    /// <summary>Last season in the window — the one the holdout comes from.</summary>
     public int Year { get; }
 
     public IReadOnlyList<DriverRaceFeature> Features { get; }
 
-    /// <summary>Races that produced feature rows, most recent first.</summary>
+    /// <summary>Races that produced feature rows, across every season in the window, most recent first.</summary>
     public IReadOnlyList<SeasonRace> Races { get; }
 
     public int RaceCount => Races.Count;
 
     /// <summary>
-    /// The most recently run race of the season. Held out of training entirely so its
+    /// The most recently run race of <see cref="Year"/>. Held out of training entirely so its
     /// predictions are an honest check rather than a recital of rows the model was fitted on.
+    /// Always from <see cref="Year"/> itself — never an earlier season in the window — so that
+    /// training with any <see cref="FromYear"/> holds out the same race the holdout page scores.
     /// </summary>
-    public SeasonRace? Holdout => Races.Count > 0 ? Races[0] : null;
+    public SeasonRace? Holdout => Races.FirstOrDefault(r => r.Year == Year);
 
-    public IReadOnlyList<DriverRaceFeature> TrainingFeatures =>
-        Holdout is null
-            ? Features
-            : [.. Features.Where(f => f.SessionKey != Holdout.SessionKey)];
+    /// <summary>Every race except the holdout, most recent first.</summary>
+    public IReadOnlyList<SeasonRace> TrainingRaces =>
+        Holdout is null ? Races : [.. Races.Where(r => r.SessionKey != Holdout.SessionKey)];
 
     public IReadOnlyList<DriverRaceFeature> HoldoutFeatures =>
         Holdout is null
             ? []
             : [.. Features.Where(f => f.SessionKey == Holdout.SessionKey).OrderBy(f => f.FinishPosition)];
 
+    /// <param name="context">Database.</param>
+    /// <param name="year">Last season to load, and the season the holdout comes from.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    /// <param name="fromYear">First season to load. Defaults to <paramref name="year"/> — a single season.</param>
     public static async Task<SeasonFeatureSet> LoadAsync(
         IApplicationDbContext context,
         int year,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        int? fromYear = null)
     {
+        var firstYear = fromYear ?? year;
+
         // Grands Prix only, matching the feature rebuild — a sprint is a different kind of race
         // and must never become a training row or the holdout. See RaceSession.IsSprint.
         var races = await (
             from session in context.RaceSessions
             join meeting in context.Meetings on session.MeetingKey equals meeting.MeetingKey
-            where meeting.Year == year && !session.IsSprint && session.IsClassified
+            where meeting.Year >= firstYear && meeting.Year <= year && !session.IsSprint && session.IsClassified
             orderby session.DateStart descending
             select new SeasonRace(
                 session.SessionKey,
                 meeting.MeetingKey,
                 meeting.MeetingName,
                 meeting.CircuitShortName,
-                session.DateStart))
+                session.DateStart,
+                meeting.Year))
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
@@ -70,11 +84,11 @@ internal sealed class SeasonFeatureSet
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        // A race with no feature rows (missing grid or results) is not part of the usable season.
+        // A race with no feature rows (missing grid or results) is not part of the usable window.
         var featuredSessionKeys = features.Select(f => f.SessionKey).ToHashSet();
         var usableRaces = races.Where(r => featuredSessionKeys.Contains(r.SessionKey)).ToList();
 
-        return new SeasonFeatureSet(year, features, usableRaces);
+        return new SeasonFeatureSet(firstYear, year, features, usableRaces);
     }
 }
 
@@ -83,9 +97,11 @@ internal sealed class SeasonFeatureSet
 /// <param name="MeetingName">Race weekend name, e.g. "Belgian Grand Prix".</param>
 /// <param name="CircuitShortName">Short circuit name, e.g. "Spa-Francorchamps".</param>
 /// <param name="DateStart">When the race session started.</param>
+/// <param name="Year">Season the race belongs to.</param>
 internal sealed record SeasonRace(
     int SessionKey,
     int MeetingKey,
     string MeetingName,
     string CircuitShortName,
-    DateTimeOffset DateStart);
+    DateTimeOffset DateStart,
+    int Year);

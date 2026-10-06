@@ -2,7 +2,6 @@ using F1Predictor.Application.Abstractions.Data;
 using F1Predictor.Application.Abstractions.MachineLearning;
 using F1Predictor.Application.Abstractions.Messaging;
 using F1Predictor.Application.Features.Predictions.GetHoldout;
-using Microsoft.EntityFrameworkCore;
 using SharedKernel;
 
 namespace F1Predictor.Application.Features.Predictions.PredictRace;
@@ -21,30 +20,20 @@ internal sealed class PredictRaceQueryHandler(
             return Result.Failure<RacePredictionsResponse>(PredictionErrors.ModelsNotTrained);
         }
 
-        var features = await context.DriverRaceFeatures
-            .Where(f => f.SessionKey == query.SessionKey)
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
-
-        if (features.Count == 0)
+        var loaded = await ClassifiedRace.LoadAsync(context, query.SessionKey, cancellationToken);
+        if (loaded.IsFailure)
         {
-            return Result.Failure<RacePredictionsResponse>(PredictionErrors.RaceNotFound(query.SessionKey));
+            return Result.Failure<RacePredictionsResponse>(loaded.Error);
         }
 
-        var meetingName = await (
-            from session in context.RaceSessions
-            join meeting in context.Meetings on session.MeetingKey equals meeting.MeetingKey
-            where session.SessionKey == query.SessionKey
-            select meeting.MeetingName)
-            .FirstOrDefaultAsync(cancellationToken) ?? "Unknown meeting";
+        var race = loaded.Value;
+        var directory = new DriverDirectory(race.Directory);
 
-        var directory = await DriverDirectory.ForSessionAsync(context, query.SessionKey, cancellationToken);
-
-        var drivers = features
+        var drivers = race.Features.Values
             .Select(feature => directory.Describe(feature, predictor.Predict(feature)))
             .OrderByDescending(d => d.PodiumProbability)
             .ToList();
 
-        return Result.Success(new RacePredictionsResponse(query.SessionKey, meetingName, drivers));
+        return Result.Success(new RacePredictionsResponse(query.SessionKey, race.MeetingName, drivers));
     }
 }

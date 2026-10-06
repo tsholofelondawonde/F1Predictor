@@ -1,0 +1,5 @@
+[*.cs]
+# Test method names read as Method_Scenario_Expectation.
+dotnet_diagnostic.CA1707.severity = none
+# xunit test classes are instantiated by the runner.
+dotnet_diagnostic.CA1812.severity = none

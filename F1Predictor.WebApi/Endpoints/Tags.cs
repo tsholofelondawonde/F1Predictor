@@ -17,4 +17,7 @@ public static class Tags
 
     /// <summary>Operational endpoints, exposed in Development only.</summary>
     public const string Admin = "Admin";
+
+    /// <summary>AI-narrated explanations, previews and the analyst chat.</summary>
+    public const string Analysis = "Analysis";
 }

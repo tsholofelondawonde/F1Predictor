@@ -21,6 +21,11 @@ namespace F1Predictor.Application.Features.Predictions.PreviewNextRace;
 /// provisional.
 /// </param>
 /// <param name="Drivers">One row per entered driver, most likely podium first.</param>
+/// <param name="QualifyingReadyToIngest">
+/// True only when the grid is unconfirmed but OpenF1 already has one — qualifying has run and
+/// just hasn't been re-ingested yet. Only ever checked (and cached ~5 minutes) while
+/// <see cref="GridConfirmed"/> is false; always false once it's true.
+/// </param>
 public sealed record NextRacePreviewResponse(
     int Year,
     int SessionKey,
@@ -32,7 +37,8 @@ public sealed record NextRacePreviewResponse(
     int? SprintSessionKey,
     DateTimeOffset? SprintDateStart,
     bool GridConfirmed,
-    IReadOnlyList<PreviewDriverResponse> Drivers);
+    IReadOnlyList<PreviewDriverResponse> Drivers,
+    bool QualifyingReadyToIngest);
 
 /// <param name="DriverNumber">Car number.</param>
 /// <param name="FullName">Driver's full name.</param>

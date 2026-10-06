@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAiStatus } from "@/shared/lib/use-ai-status";
 
 const TABS = [
   { href: "/dashboard", label: "Dashboard" },
@@ -17,13 +18,16 @@ function isActive(pathname: string, href: string): boolean {
 
 export function TabNav() {
   const pathname = usePathname();
+  const { chatAvailable } = useAiStatus();
+  // The Analyst tab only earns its place when a provider is configured — see /api/ai/status.
+  const tabs = [...TABS, ...(chatAvailable ? ([{ href: "/analyst", label: "Analyst" }] as const) : [])];
 
   return (
     <nav
       className="flex overflow-x-auto font-mono text-xs uppercase tracking-wider"
       aria-label="Sections"
     >
-      {TABS.map((tab) => {
+      {tabs.map((tab) => {
         const active = isActive(pathname, tab.href);
 
         return (

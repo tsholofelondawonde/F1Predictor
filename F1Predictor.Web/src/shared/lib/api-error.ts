@@ -43,6 +43,14 @@ export class ApiError extends Error {
 
     return new ApiError(0, "Network", "Could not reach the server. Check your connection.");
   }
+
+  /** For responses read with `fetch` rather than axios (the SSE analyst stream), where there is no AxiosError to unwrap. */
+  static fromProblemDetails(status: number, problem: ProblemDetails | null): ApiError {
+    if (problem) {
+      return new ApiError(problem.status ?? status, problem.title ?? "Unknown", problem.userMessage ?? problem.detail ?? "Request failed.", problem.errors);
+    }
+    return new ApiError(status, `Http${status}`, messageForBodilessStatus(status, undefined));
+  }
 }
 
 function messageForBodilessStatus(status: number, retryAfter: unknown): string {

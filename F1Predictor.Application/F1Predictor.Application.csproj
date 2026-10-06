@@ -8,6 +8,7 @@
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" />
     <PackageReference Include="Microsoft.Extensions.Configuration" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
@@ -18,6 +19,11 @@
   <ItemGroup>
     <ProjectReference Include="..\F1Predictor.Domain\F1Predictor.Domain.csproj" />
     <ProjectReference Include="..\SharedKernel\SharedKernel.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="F1Predictor.Application.Tests" />
+    <InternalsVisibleTo Include="F1Predictor.Infrastructure.Tests" />
   </ItemGroup>
 
 </Project>

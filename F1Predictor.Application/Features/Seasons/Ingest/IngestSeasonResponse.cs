@@ -4,11 +4,19 @@ namespace F1Predictor.Application.Features.Seasons.Ingest;
 /// <param name="MeetingsFound">Race weekends OpenF1 knows about for that season.</param>
 /// <param name="MeetingsIngested">Weekends whose race data was newly persisted by this run.</param>
 /// <param name="Meetings">Per-weekend outcome, in the order they were processed.</param>
+/// <param name="ClassifiedSessionKeys">Sessions that became classified by this run — i.e. went from no results to published results.</param>
+/// <param name="GridStored">
+/// True when any session's starting grid was newly persisted by this run, whether or not the
+/// race itself is classified yet. Lets a caller (the ingestion coordinator) learn that a grid
+/// just became available without a follow-up query.
+/// </param>
 public sealed record IngestSeasonResponse(
     int Year,
     int MeetingsFound,
     int MeetingsIngested,
-    IReadOnlyList<IngestedMeeting> Meetings);
+    IReadOnlyList<IngestedMeeting> Meetings,
+    IReadOnlyList<int> ClassifiedSessionKeys,
+    bool GridStored);
 
 /// <param name="MeetingKey">OpenF1's stable id for the weekend — unique even when two meetings share a name.</param>
 /// <param name="MeetingName">Name of the race weekend.</param>

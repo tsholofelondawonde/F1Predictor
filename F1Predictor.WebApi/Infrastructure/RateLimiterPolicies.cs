@@ -8,4 +8,12 @@ internal static class RateLimiterPolicies
 
     /// <summary>3 requests per minute per IP — rebuild, train and the legacy admin import.</summary>
     public const string Mutating = "Mutating";
+
+    /// <summary>10 requests per minute per IP — one analyst question is one LLM round trip with up to six tool calls.</summary>
+    public const string Analyst = "Analyst";
+
+    /// <summary>A single global partition, fixed window, 24h — a cost guard on top of the per-IP
+    /// <see cref="Analyst"/> limit now that a hosted provider's tokens cost money. Configurable via
+    /// <c>Ai:DailyChatRequestCap</c> (default 500).</summary>
+    public const string AnalystDaily = "AnalystDaily";
 }

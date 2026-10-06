@@ -23,6 +23,16 @@ public class RaceSession
     public int? QualifyingSessionKey { get; set; }
 
     /// <summary>
+    /// When the session's qualifying (or, on a sprint weekend, Sprint Qualifying) started.
+    /// Populated from the OpenF1 sessions list the ingest handler already fetches, using the
+    /// same session-selection logic as <see cref="QualifyingSessionKey"/>: Sprint Qualifying
+    /// precedes a sprint weekend's race, Qualifying precedes every other Grand Prix. Null until
+    /// that session has been published, and for any race weekend ingested before this column
+    /// existed — backfilled the next time that season is re-ingested with <c>?force=true</c>.
+    /// </summary>
+    public DateTimeOffset? QualifyingDateStart { get; set; }
+
+    /// <summary>
     /// True for a sprint. OpenF1 gives sprints <c>session_type: "Race"</c> with
     /// <c>session_name: "Sprint"</c>, so they arrive down the same pipe as a Grand Prix.
     /// </summary>

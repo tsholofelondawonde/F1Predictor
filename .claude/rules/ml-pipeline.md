@@ -79,9 +79,12 @@ mlContext.Auto()
   .Execute(trainView, validationView, labelColumnName: "Label")
 ```
 
-AutoML searches over SDCA, LBFGS, LightGBM, FastTree, and FastForest, building its own
+AutoML searches over SDCA, LBFGS, LightGBM and FastTree, building its own
 featurization (concatenation, missing-value handling, calibration) internally — there is no
-longer a hand-built `Concatenate`/`NormalizeMinMax` step. `ModelTrainingResult.TrainerName`
+longer a hand-built `Concatenate`/`NormalizeMinMax` step. **FastForest is removed from the
+search** (`settings.Trainers.Remove`): it is the one uncalibrated binary trainer, so it emits no
+`Probability` column, and evaluation, `MlNetRacePredictor` and `ModelExplainer` all read one.
+When it won a search, training failed with "Probability column 'Probability' not found". `ModelTrainingResult.TrainerName`
 records which trainer the search picked for each target; the two classifiers may land on
 different trainers since they are fit independently.
 
@@ -222,8 +225,8 @@ spirit as `TrainModelsResponse.MetricGuidance`.
 
 ## Explaining a prediction
 
-AutoML may pick any of five trainers per target (SDCA, LBFGS, LightGBM, FastTree, FastForest —
-see Model Training above), and the two committed models did not land on the same one: podium is a
+AutoML may pick any of four trainers per target (SDCA, LBFGS, LightGBM, FastTree — see Model
+Training above), and the two committed models did not land on the same one: podium is a
 linear model (calibrated `LinearBinaryModelParameters`), points-finish is `FastTree`. Reading
 coefficients only works for the linear case, so `F1Predictor.Infrastructure/MachineLearning/
 ModelExplainer.cs` uses ML.NET's `CalculateFeatureContribution` instead — it is the one

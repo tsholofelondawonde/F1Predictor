@@ -11,7 +11,7 @@ namespace F1Predictor.Infrastructure.MachineLearning;
 /// </summary>
 /// <remarks>
 /// Training is an AutoML search, so the saved model may be linear (SDCA, LBFGS) or a tree
-/// ensemble (FastTree, FastForest, LightGBM). Reading coefficients only works for the first
+/// ensemble (FastTree, LightGBM). Reading coefficients only works for the first
 /// kind; <c>CalculateFeatureContribution</c> is supported for all of them, so it is the one
 /// honest, trainer-agnostic answer to "why this number". Contributions are left unnormalised
 /// (<c>normalize: false</c>) so they stay on the score scale and are comparable between drivers.

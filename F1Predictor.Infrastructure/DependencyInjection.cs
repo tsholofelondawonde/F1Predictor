@@ -355,7 +355,9 @@ public static class DependencyInjection
     }
 
     /// <summary>
-    /// Configures and registers the application's database context with connection resilience.
+    /// Configures and registers the application's database context. There is deliberately no
+    /// <c>EnableRetryOnFailure</c>: it would reject the manual transaction in ingestion. Startup
+    /// migration retries transient failures itself (<c>MigrationExtensions.ApplyMigrations</c>).
     /// </summary>
     /// <param name="services">The service collection to add services to.</param>
     /// <param name="configuration">The application configuration.</param>

@@ -8,7 +8,8 @@ namespace F1Predictor.Infrastructure.MachineLearning;
 
 /// <summary>
 /// Trains the two binary classifiers via an ML.NET AutoML search over trainers (SDCA, LightGBM,
-/// FastTree, FastForest, LBFGS), optimizing F1.
+/// FastTree, LBFGS), optimizing F1. FastForest is excluded: it is uncalibrated, so it produces no
+/// Probability column.
 /// </summary>
 /// <remarks>
 /// The search fits on the earlier races and is scored on the later ones, exactly as handed over
@@ -37,12 +38,17 @@ internal sealed class MlNetModelTrainer(IOptions<ModelStorageOptions> options) :
         var trainView = Load(data.Train, target);
         var validationView = Load(data.Validation, target);
 
+        var settings = new BinaryExperimentSettings
+        {
+            MaxExperimentTimeInSeconds = MaxExperimentTimeInSeconds,
+            OptimizingMetric = BinaryClassificationMetric.F1Score
+        };
+        // FastForest is the one trainer in the search space with no calibrator — it emits no
+        // Probability column, which Evaluate, the predictor and the explainer all read.
+        settings.Trainers.Remove(BinaryClassificationTrainer.FastForest);
+
         var experimentResult = _mlContext.Auto()
-            .CreateBinaryClassificationExperiment(new BinaryExperimentSettings
-            {
-                MaxExperimentTimeInSeconds = MaxExperimentTimeInSeconds,
-                OptimizingMetric = BinaryClassificationMetric.F1Score
-            })
+            .CreateBinaryClassificationExperiment(settings)
             .Execute(trainView, validationView, labelColumnName: "Label");
 
         var bestRun = experimentResult.BestRun;

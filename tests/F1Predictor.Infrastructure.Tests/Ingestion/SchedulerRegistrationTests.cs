@@ -31,7 +31,7 @@ public sealed class SchedulerRegistrationTests
         await using var provider = services.BuildServiceProvider();
         var scheduler = await provider.GetRequiredService<ISchedulerFactory>().GetScheduler();
 
-        (await scheduler.CheckExists(AnalysisRefreshJob.Key)).Should().BeTrue();
-        (await scheduler.CheckExists(new JobKey(nameof(SeasonIngestionCoordinatorJob)))).Should().BeTrue();
+        (await scheduler.Exists(AnalysisRefreshJob.Key)).Should().BeTrue();
+        (await scheduler.Exists(new JobKey(nameof(SeasonIngestionCoordinatorJob)))).Should().BeTrue();
     }
 }

@@ -253,7 +253,7 @@ public sealed class SeasonIngestionCoordinatorJobTests
         await db.SaveChangesAsync();
         var ingestHandler = new FakeIngestSeasonCommandHandler();
 
-        await Job(db, ingestHandler: ingestHandler).Execute(new FakeJobExecutionContext());
+        await Job(db, ingestHandler: ingestHandler).Execute(new FakeJobExecutionContext(), CancellationToken.None);
 
         ingestHandler.HandledYears.Should().ContainSingle().Which.Should().Be(2026);
     }
@@ -277,14 +277,14 @@ public sealed class SeasonIngestionCoordinatorJobTests
         var ingestHandler = new FakeIngestSeasonCommandHandler { Signal = ([20], GridStored: false) };
         var scheduler = new Mock<IScheduler>();
 
-        await Job(db, ingestHandler: ingestHandler).Execute(new FakeJobExecutionContext(scheduler.Object));
+        await Job(db, ingestHandler: ingestHandler).Execute(new FakeJobExecutionContext(scheduler.Object), CancellationToken.None);
 
         // The critical ordering constraint: the coordinator only ever enqueues the refresh via
         // TriggerJob — it must never await AnalysisRefreshJob's own handler inline, or a slow
         // chat completion would block every other due season behind it in this same loop.
         scheduler.Verify(s => s.TriggerJob(
             AnalysisRefreshJob.Key,
-            It.Is<JobDataMap>(map => (int)map["year"] == 2026),
+            It.Is<JobDataMap>(map => Equals(map["year"], 2026)),
             It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -307,7 +307,7 @@ public sealed class SeasonIngestionCoordinatorJobTests
         var ingestHandler = new FakeIngestSeasonCommandHandler { Signal = ([], GridStored: true) };
         var scheduler = new Mock<IScheduler>();
 
-        await Job(db, ingestHandler: ingestHandler).Execute(new FakeJobExecutionContext(scheduler.Object));
+        await Job(db, ingestHandler: ingestHandler).Execute(new FakeJobExecutionContext(scheduler.Object), CancellationToken.None);
 
         scheduler.Verify(s => s.TriggerJob(
             AnalysisRefreshJob.Key,
@@ -334,7 +334,7 @@ public sealed class SeasonIngestionCoordinatorJobTests
 
         // Same trick as the no-signal test below: touching context.Scheduler throws, so a clean
         // run proves the trigger was never attempted.
-        Func<Task> act = () => Job(db, ingestHandler: ingestHandler, aiAvailable: false).Execute(new FakeJobExecutionContext());
+        Func<Task> act = () => Job(db, ingestHandler: ingestHandler, aiAvailable: false).Execute(new FakeJobExecutionContext(), CancellationToken.None).AsTask();
 
         await act.Should().NotThrowAsync();
         ingestHandler.HandledYears.Should().ContainSingle().Which.Should().Be(2026);
@@ -358,7 +358,7 @@ public sealed class SeasonIngestionCoordinatorJobTests
         // Signal defaults to (empty, false). FakeJobExecutionContext() with no scheduler throws
         // NotSupportedException the moment context.Scheduler is touched, so a clean run is itself
         // the assertion: no signal means Execute must never reach context.Scheduler.
-        Func<Task> act = () => Job(db).Execute(new FakeJobExecutionContext());
+        Func<Task> act = () => Job(db).Execute(new FakeJobExecutionContext(), CancellationToken.None).AsTask();
 
         await act.Should().NotThrowAsync();
     }

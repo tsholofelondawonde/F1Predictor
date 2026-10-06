@@ -19,13 +19,13 @@ internal sealed class AnalysisRefreshJob(
 {
     public static readonly JobKey Key = new(nameof(AnalysisRefreshJob));
 
-    public async Task Execute(IJobExecutionContext context)
+    public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken = default)
     {
         int? year = context.JobDetail.JobDataMap.TryGetValue("year", out var yearValue) && yearValue is int y
             ? y
             : null;
 
-        var result = await handler.Handle(new RefreshAnalysisCommand { Year = year }, context.CancellationToken);
+        var result = await handler.Handle(new RefreshAnalysisCommand { Year = year }, cancellationToken);
 
         if (result.IsSuccess)
         {

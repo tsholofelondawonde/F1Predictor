@@ -32,10 +32,8 @@ internal sealed class SeasonIngestionCoordinatorJob(
 {
     private bool HasAnalysisWork => ai.ChatAvailable || ai.EmbeddingsAvailable;
 
-    public async Task Execute(IJobExecutionContext context)
+    public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken = default)
     {
-        var cancellationToken = context.CancellationToken;
-
         var dueYears = await DueYearsAsync(cancellationToken);
 
         if (dueYears.Count == 0 && !await dbContext.RaceSessions.AnyAsync(cancellationToken))

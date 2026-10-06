@@ -17,6 +17,7 @@ internal sealed class FakeJobExecutionContext(IScheduler? scheduler = null) : IJ
     public bool Recovering => false;
     public TriggerKey RecoveringTriggerKey => throw new NotSupportedException();
     public int RefireCount => 0;
+    public int RetryAttempt => 0;
     public JobDataMap MergedJobDataMap => throw new NotSupportedException();
     public IJobDetail JobDetail => throw new NotSupportedException();
     public IJob JobInstance => throw new NotSupportedException();
@@ -27,7 +28,4 @@ internal sealed class FakeJobExecutionContext(IScheduler? scheduler = null) : IJ
     public string FireInstanceId => "fake";
     public object? Result { get; set; }
     public TimeSpan JobRunTime => TimeSpan.Zero;
-
-    public void Put(object key, object objectValue) => throw new NotSupportedException();
-    public object? Get(object key) => throw new NotSupportedException();
 }

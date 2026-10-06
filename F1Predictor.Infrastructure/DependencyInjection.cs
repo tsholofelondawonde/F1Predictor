@@ -163,7 +163,7 @@ public static class DependencyInjection
                 quartz.AddTrigger(trigger => trigger
                     .ForJob(ingestionJobKey)
                     .WithSimpleSchedule(schedule => schedule
-                        .WithIntervalInMinutes(schedulerOptions.CoordinatorIntervalMinutes)
+                        .WithInterval(TimeSpan.FromMinutes(schedulerOptions.CoordinatorIntervalMinutes))
                         .RepeatForever())
                     .StartNow());
             }
@@ -175,7 +175,7 @@ public static class DependencyInjection
                 quartz.AddTrigger(trigger => trigger
                     .ForJob(AnalysisRefreshJob.Key)
                     .WithSimpleSchedule(schedule => schedule
-                        .WithIntervalInMinutes(analysisRefreshOptions.IntervalMinutes)
+                        .WithInterval(TimeSpan.FromMinutes(analysisRefreshOptions.IntervalMinutes))
                         .RepeatForever())
                     .StartNow());
             }

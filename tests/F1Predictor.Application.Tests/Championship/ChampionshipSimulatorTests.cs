@@ -31,6 +31,32 @@ public sealed class ChampionshipSimulatorTests
     }
 
     [Fact]
+    public void Run_PaceUncertaintyOn_LeaderIsLessCertainThanWhenPaceIsTreatedAsExact()
+    {
+        var standings = DominantSeason.Standings(6);
+        var forms = DriverFormModel.Fit(DominantSeason.Outcomes(6));
+        var remaining = DominantSeason.Remaining(Season - 6, firstKey: 7);
+
+        var exact = ChampionshipSimulator.Run(standings, forms, remaining, 2_000, paceUncertainty: 0);
+        var uncertain = ChampionshipSimulator.Run(standings, forms, remaining, 2_000);
+
+        var exactLeader = exact.Drivers.Single(d => d.DriverNumber == 1).Odds.TitleProbability;
+        var uncertainLeader = uncertain.Drivers.Single(d => d.DriverNumber == 1).Odds.TitleProbability;
+
+        uncertainLeader.Should().BeLessThan(exactLeader);
+    }
+
+    [Fact]
+    public void Run_SameSeed_IsRepeatable()
+    {
+        var first = Forecast(racesDone: 6);
+        var second = Forecast(racesDone: 6);
+
+        first.Drivers.Select(d => d.Odds.TitleProbability)
+            .Should().Equal(second.Drivers.Select(d => d.Odds.TitleProbability));
+    }
+
+    [Fact]
     public void Run_DominantOneTwoTeam_GivesRivalConstructorsNonZeroOdds()
     {
         // Three clean one-twos with nineteen rounds left: the leading team is the clear favourite,

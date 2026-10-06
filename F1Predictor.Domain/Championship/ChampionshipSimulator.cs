@@ -30,12 +30,21 @@ public static class ChampionshipSimulator
     /// <summary>Matches the trainer's seed. Nothing depends on the value, only on its fixity.</summary>
     public const int DefaultSeed = 42;
 
+    /// <summary>
+    /// Multiplier on each driver's pace standard error (about 1/sqrt(starts) in log-strength) when
+    /// redrawing form per simulated season. 1 takes the fit's own uncertainty at face value;
+    /// 0 treats the fitted pace as exact, which is what made a clear but beatable lead read as
+    /// a certainty.
+    /// </summary>
+    public const double DefaultPaceUncertainty = 1.0;
+
     public static ChampionshipForecast Run(
         ChampionshipStandings standings,
         IReadOnlyList<DriverForm> forms,
         IReadOnlyList<RemainingSession> remaining,
         int simulations = DefaultSimulations,
-        int seed = DefaultSeed)
+        int seed = DefaultSeed,
+        double paceUncertainty = DefaultPaceUncertainty)
     {
         ArgumentNullException.ThrowIfNull(standings);
         ArgumentNullException.ThrowIfNull(forms);
@@ -53,6 +62,7 @@ public static class ChampionshipSimulator
         for (var run = 0; run < simulations; run++)
         {
             field.ResetToCurrent();
+            field.DrawSeasonForm(random, paceUncertainty);
 
             foreach (var session in remaining)
             {

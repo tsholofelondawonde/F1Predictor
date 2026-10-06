@@ -1,5 +1,5 @@
 import type { DriverForecast } from "@/features/championship/championship-types";
-import { ProbabilityBar } from "@/shared/components/ProbabilityBar";
+import { formatTitleOdds, ProbabilityBar } from "@/shared/components/ProbabilityBar";
 import { TeamColour, teamColourCss } from "@/shared/components/TeamColour";
 
 interface DriverStandingsTableProps {
@@ -47,6 +47,7 @@ export function DriverStandingsTable({ drivers }: DriverStandingsTableProps) {
                   colour={teamColourCss(driver.teamColour)}
                   muted={!driver.isMathematicallyAlive}
                   segmented
+                  format={formatTitleOdds}
                 />
               </td>
               <td className="py-2 font-mono text-xs tabular-nums text-(--color-muted)">

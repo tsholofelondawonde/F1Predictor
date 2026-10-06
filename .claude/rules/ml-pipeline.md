@@ -210,6 +210,15 @@ is decided by orders, not margins. So:
    session's order via the Gumbel-max trick (one sort per session, not n sequential draws),
    dropping sampled retirements to the back with nothing, awarding real points, and settling
    both tables by count-back. Title probability is the share of seasons an entrant finished top.
+   **Pace uncertainty.** The fitted strengths are estimates from ~14 races, not known values.
+   Treating them as exact made a clear-but-beatable lead (an 84-point gap with 183 on offer)
+   read 99.97% / 0.03%, because independent races average out over a season. So each simulated
+   season first redraws every driver's log-strength around the fit, with standard error
+   `1/sqrt(starts)` (`SimulationField.DrawSeasonForm`, scaled by
+   `ChampionshipSimulator.DefaultPaceUncertainty`; 0 turns it off), and holds that draw for the
+   whole remaining calendar. The draw uses the same seeded generator, so results stay repeatable.
+   The web app also shows title odds as `>99%` / `<1%` (`formatTitleOdds`) unless a value is
+   exactly 0 or 1.
 3. **`TitleScenarioAnalyser`** answers the same question as arithmetic instead: who is
    mathematically alive, what the leader needs to clinch, and — assuming a contender wins out —
    the best average finish the leader could still manage and lose.

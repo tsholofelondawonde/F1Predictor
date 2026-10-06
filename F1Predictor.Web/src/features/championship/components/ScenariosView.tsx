@@ -6,7 +6,7 @@ import type { TitleScenario } from "@/features/championship/championship-types";
 import { Card } from "@/shared/components/Card";
 import { ErrorBanner } from "@/shared/components/ErrorBanner";
 import { LiveFooter } from "@/shared/components/LiveFooter";
-import { formatProbability, ProbabilityBar } from "@/shared/components/ProbabilityBar";
+import { formatTitleOdds, ProbabilityBar } from "@/shared/components/ProbabilityBar";
 import { CardSkeleton } from "@/shared/components/Skeleton";
 import { TeamColour, teamColourCss } from "@/shared/components/TeamColour";
 import { getErrorDisplay } from "@/shared/lib/error-display";
@@ -129,9 +129,10 @@ export function ScenariosView({ year }: ScenariosViewProps) {
                     colour={teamColourCss(scenario.teamColour)}
                     muted={!scenario.isMathematicallyAlive}
                     segmented
+                    format={formatTitleOdds}
                   />
                 </div>
-                <span className="sr-only">{formatProbability(scenario.titleProbability)}</span>
+                <span className="sr-only">{formatTitleOdds(scenario.titleProbability)}</span>
               </div>
             </Card>
           );

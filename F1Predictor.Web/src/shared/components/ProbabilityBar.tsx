@@ -7,11 +7,13 @@ interface ProbabilityBarProps {
   muted?: boolean;
   /** Renders as a blocky HUD-meter instead of a smooth pill — dashboard tables only. */
   segmented?: boolean;
+  /** Formats the percentage label. Defaults to {@link formatProbability}. */
+  format?: (value: number) => string;
 }
 
 const SEGMENT_COUNT = 10;
 
-export function ProbabilityBar({ value, colour, muted = false, segmented = false }: ProbabilityBarProps) {
+export function ProbabilityBar({ value, colour, muted = false, segmented = false, format = formatProbability }: ProbabilityBarProps) {
   const percent = Math.max(0, Math.min(1, value)) * 100;
 
   return (
@@ -59,7 +61,7 @@ export function ProbabilityBar({ value, colour, muted = false, segmented = false
         </div>
       )}
       <span className="w-14 shrink-0 text-right font-mono text-xs tabular-nums">
-        {formatProbability(value)}
+        {format(value)}
       </span>
     </div>
   );
@@ -72,6 +74,20 @@ export function ProbabilityBar({ value, colour, muted = false, segmented = false
 export function formatProbability(value: number): string {
   if (value <= 0) return "0%";
   if (value < 0.001) return "<0.1%";
+
+  return `${(value * 100).toFixed(1)}%`;
+}
+
+/**
+ * Title odds come from a simulation, so "100%" and "0%" overstate what it can know: a lead that
+ * is clear but not clinched is a very likely outcome, not a certainty. Only a value that is
+ * exactly 0 or 1 reads as such; anything either side of that is shown as a bound.
+ */
+export function formatTitleOdds(value: number): string {
+  if (value <= 0) return "0%";
+  if (value >= 1) return "100%";
+  if (value > 0.99) return ">99%";
+  if (value < 0.01) return "<1%";
 
   return `${(value * 100).toFixed(1)}%`;
 }

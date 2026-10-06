@@ -1,5 +1,6 @@
 using F1Predictor.Application.Abstractions.Behaviours;
 using F1Predictor.Application.Abstractions.Messaging;
+using F1Predictor.Application.Features.Analysis;
 using Microsoft.Extensions.Configuration;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
@@ -57,6 +58,10 @@ public static class DependencyInjection
 
         // Register validators from this assembly (including internal types)
         services.AddValidatorsFromAssembly(assembly, includeInternalTypes: true);
+
+        // AnalystTools is a plain scoped service, not a handler, so the Scrutor scan above does
+        // not pick it up — it wraps handlers rather than implementing one itself.
+        services.AddScoped<AnalystTools>();
 
         // Backs the championship simulation cache. The dashboard polls the forecast on a timer
         // and two use cases share the same run, so without this the same ten thousand seasons

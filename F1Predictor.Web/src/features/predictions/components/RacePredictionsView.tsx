@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { DriverExplanation } from "@/features/analysis/components/DriverExplanation";
 import { getRacePredictions } from "@/features/predictions/predictions-service";
 import type { RacePredictionsResponse } from "@/features/predictions/predictions-types";
 import { PredictionsTable } from "@/features/predictions/components/PredictionsTable";
@@ -76,7 +77,12 @@ export function RacePredictionsView({ sessionKey }: RacePredictionsViewProps) {
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">Race Predictions</h1>
       <Card title={data.meetingName}>
-        <PredictionsTable drivers={data.drivers} />
+        <PredictionsTable
+          drivers={data.drivers}
+          renderDetail={(driverNumber) => (
+            <DriverExplanation source="classified" sessionKey={sessionKey} driverNumber={driverNumber} />
+          )}
+        />
       </Card>
     </div>
   );

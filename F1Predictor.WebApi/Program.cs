@@ -39,8 +39,8 @@ builder.Services.AddCors(options => options.AddPolicy(FrontendCorsPolicy, policy
           .WithMethods("GET", "POST")
           .WithHeaders("Content-Type", "X-Api-Key")));
 
-// Only the four mutating routes that opt into these policies via .RequireRateLimiting(...)
-// are affected — every other route is unrestricted.
+// Only the mutating routes and the analyst chat that opt into these policies via
+// .RequireRateLimiting(...) are affected — every other route is unrestricted.
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -97,6 +97,17 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
             }));
+
+    options.AddPolicy(RateLimiterPolicies.Analyst, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+
+    var dailyChatRequestCap = builder.Configuration.GetValue("Ai:DailyChatRequestCap", 500);
+    options.AddPolicy(RateLimiterPolicies.AnalystDaily, _ =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: "global",
+            factory: _ => new FixedWindowRateLimiterOptions { PermitLimit = dailyChatRequestCap, Window = TimeSpan.FromHours(24), QueueLimit = 0 }));
 });
 
 builder.Services
@@ -159,7 +170,7 @@ app.UseRateLimiter();
 
 // Mapped in every environment, not just Development: the deployed container is driven from
 // Scalar, and it doubles as the deployment smoke test. Nothing here is a mutating route —
-// the four that are still sit behind the X-Api-Key middleware. SecurityHeadersMiddleware already
+// the six that are still sit behind the X-Api-Key middleware. SecurityHeadersMiddleware already
 // exempts /scalar and /openapi from its strict CSP so the page renders.
 app.MapOpenApi();
 

@@ -25,22 +25,10 @@
     <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.11.0" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.15" />
     <PackageVersion Include="Microsoft.Data.Sqlite.Core" Version="10.0.15" />
-    <PackageVersion Include="AspNetCore.HealthChecks.UI.Client" Version="9.0.0" />
-    <PackageVersion Include="Bogus" Version="35.6.5" />
     <PackageVersion Include="coverlet.collector" Version="10.1.1" />
     <PackageVersion Include="FluentAssertions" Version="8.11.0" />
     <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.2.0" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.15" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.15" />
-    <PackageVersion Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.9" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components.Analyzers" Version="10.0.15" />
-    <PackageVersion Include="Microsoft.AspNetCore.Http.Features" Version="5.0.17" />
-    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.15" />
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.15" />
-    <PackageVersion Include="Microsoft.Azure.Functions.Worker" Version="2.1.0" />
-    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore" Version="2.0.2" />
-    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.ServiceBus" Version="5.23.0" />
-    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Sdk" Version="2.0.5" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.15" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Analyzers" Version="10.0.15" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.15" />
@@ -53,26 +41,20 @@
     <PackageVersion Include="SQLitePCLRaw.provider.e_sqlite3" Version="2.1.14" />
     <PackageVersion Include="SQLitePCLRaw.core" Version="2.1.14" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.15" />
-    <PackageVersion Include="Microsoft.Extensions.Azure" Version="1.13.1" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.15" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.15" />
-    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.15" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.15" />
-    <!-- Pinned above the 9.0.4 range covered by GHSA-73j8-2gch-69rq, which Microsoft.ML.AutoML
-         would otherwise drag in transitively. -->
-    <PackageVersion Include="Microsoft.Bcl.Memory" Version="10.0.15" />
     <PackageVersion Include="Microsoft.ML" Version="5.0.1" />
     <PackageVersion Include="Microsoft.ML.AutoML" Version="0.23.1" />
     <PackageVersion Include="Microsoft.Extensions.ML" Version="5.0.1" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.15" />
-    <PackageVersion Include="Microsoft.NET.Runtime.WebAssembly.Wasi.Sdk" Version="10.0.15" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />
     <PackageVersion Include="Microsoft.OpenApi" Version="2.13.1" />
     <PackageVersion Include="Moq" Version="4.21.0" />
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <!-- Npgsql.EntityFrameworkCore.PostgreSQL 10.0.2 has no native mapping for the Postgres
-         `vector` type (verified against its assembly and the 10.0 release notes) ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Pgvector.EntityFrameworkCore
+         `vector` type (verified against its assembly and the 10.0 release notes) — Pgvector.EntityFrameworkCore
          supplies the EF value converter/type mapping, and pulls in the bare Pgvector package
          (the `Vector` CLR type) as its own dependency; pinned explicitly here only because
          CentralPackageTransitivePinningEnabled requires every transitive package to have a
@@ -80,11 +62,8 @@
     <PackageVersion Include="Pgvector.EntityFrameworkCore" Version="0.3.0" />
     <PackageVersion Include="Pgvector" Version="0.3.2" />
     <PackageVersion Include="OllamaSharp" Version="5.5.2" />
-    <PackageVersion Include="Radzen.Blazor" Version="10.2.3" />
     <PackageVersion Include="Scalar.AspNetCore" Version="2.21.0" />
     <PackageVersion Include="Scrutor" Version="7.0.0" />
-    <PackageVersion Include="Swashbuckle.AspNetCore" Version="10.1.7" />
-    <PackageVersion Include="System.Text.Json" Version="10.0.1" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.15" />

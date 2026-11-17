@@ -49,9 +49,23 @@ tense; the "apply by hand before merging" rule still stands for the next model c
 **`AddModelTrainingRuns` is already applied to Neon production** (verified with
 `dotnet ef migrations list`, which showed no pending migrations). It adds one table,
 `ModelTrainingRuns`, plus its index. It was most likely applied by the Development-startup
-auto-migrate rather than by hand, because the `LocalDb` user secret points at the production
-endpoint (the `-pooler` host of the same Neon branch) — there is currently no separate
-development branch. Treat local ingest/train runs as writing to production until one is created.
+auto-migrate rather than by hand, because at the time the `LocalDb` user secret pointed at the
+production endpoint.
+
+**Local development now uses a separate Neon `dev` branch** (branched from `main`, so it starts
+with production's data). `ConnectionStrings:LocalDb` points at that branch's pooled endpoint, in
+the user secrets of **both** `F1Predictor.AppHost` (used by Aspire) and `F1Predictor.WebApi`
+(used by a standalone `dotnet run`). Never set `ConnectionStrings:ProdDb` locally: it is read
+before `LocalDb` and would silently win. Two gotchas:
+
+- Npgsql takes the key-value form (`Host=…;Database=…;Username=…;Password=…;SSL Mode=Require`),
+  **not** the `postgresql://…` URI that Neon's console shows by default. A URI fails at startup.
+- `ApplicationDbContextFactory` (the `dotnet ef` design-time factory) reads appsettings and
+  environment variables only, not user secrets. Pass `--connection "<string>"` or set
+  `ConnectionStrings__LocalDb` for any `dotnet ef` command that has to connect.
+
+Local non-secret overrides (CORS origin, AI pinned off, debug logging) live in
+`F1Predictor.WebApi/appsettings.Development.json`, which is gitignored.
 
 Then, from `/scalar`: ingest a season → rebuild features → train (optionally
 `?fromYear=2023&notes=…`) → read the holdout table → compare runs at `GET /api/models/runs`.
@@ -84,9 +98,8 @@ Without a hosted provider (see "AI provider (production)" below), production has
 — there is no Ollama daemon in Azure Container Apps. Production serves a stored preview read-only
 through `GET /api/races/{sessionKey}/preview` — nothing in prod needs to reach an LLM to display
 one — but a preview generated against the usual local setup never gets there:
-`ConnectionStrings:LocalDb` is meant to be a Neon development branch, not production (today it
-points at the production endpoint — see above), so the row lands in
-the wrong database. To publish a preview to production, run the local API with
+`ConnectionStrings:LocalDb` points at the Neon `dev` branch, not production (see above), so the
+row lands in the wrong database. To publish a preview to production, run the local API with
 `ConnectionStrings:LocalDb` temporarily pointed at the **production** connection string (a user
 secret, never `appsettings.json`), `POST /api/races/{sessionKey}/preview` with the `X-Api-Key`
 header, then point the secret back at the development branch. Until that is done the deployed

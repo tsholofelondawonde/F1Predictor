@@ -1,4 +1,4 @@
-<Project Sdk="Aspire.AppHost.Sdk/13.5.3">
+<Project Sdk="Aspire.AppHost.Sdk/13.6.5">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -6,8 +6,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <UserSecretsId>eaa863b2-b133-46c8-81c1-214a1f390c49</UserSecretsId>
-    <!-- NU1903: MessagePack vulnerability — transitive dep of Aspire.AppHost.Sdk, not directly referenced. -->
-    <NoWarn>$(NoWarn);NU1903</NoWarn>
+    <!-- ASPIRE010: Aspire 13.6 warns that AspireUseCliBundle defaults to false. We deliberately stay on the
+         NuGet-delivered dashboard/DCP packages rather than switching to the Aspire CLI bundle. -->
+    <NoWarn>$(NoWarn);ASPIRE010</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

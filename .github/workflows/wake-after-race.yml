@@ -1,0 +1,47 @@
+name: Wake after race
+
+# The container app scales to zero, and the ingestion coordinator runs inside it on a Quartz
+# timer — so while no replica is up, nothing ingests. The coordinator's trigger is StartNow(),
+# though, so every cold start runs its "is any session due?" check straight away. This workflow
+# just wakes the app after each race window and keeps it awake long enough for any ingest to
+# finish: ACA keeps a replica for 300s after the last request, so three pings four minutes apart
+# hold it for ~15 minutes.
+#
+# It calls only /health — no API key, and the app's own logic decides what (if anything) to fetch.
+# See .claude/rules/setup.md, "Deployment → Provisioning (one time)".
+
+on:
+  schedule:
+    # UTC. Off the hour, because :00 is when scheduled workflows queue longest. Each slot is
+    # after the latest race finish in its window plus the coordinator's 180-min buffer.
+    - cron: '17 20 * * 6'     # Saturday: sprints
+    - cron: '17 12,20 * * 0'  # Sunday: Asian/Australian races, then European
+    - cron: '17 4 * * 1'      # Monday: American races
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: wake-after-race
+  cancel-in-progress: false
+
+jobs:
+  wake:
+    name: Wake the API
+    if: github.repository == 'tsholofelondawonde/F1Predictor' && vars.APP_URL != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      APP_URL: ${{ vars.APP_URL }}
+    steps:
+      - name: Ping /health to keep a replica up
+        run: |
+          for i in 1 2 3; do
+            # Generous timeout: the first ping may be a cold start (image pull + .NET startup).
+            # -w still prints 000 when curl fails outright, so `|| true` is all that's needed.
+            code=$(curl -sS -o body.json -w '%{http_code}' --max-time 120 "$APP_URL/health" || true)
+            echo "Ping $i: HTTP $code $(cat body.json 2>/dev/null || true)"
+            if [ "$i" -lt 3 ]; then sleep 240; fi
+          done
+          # A wake is best-effort; report a dead API rather than staying silent about it.
+          [ "$code" = "200" ] || { echo "::warning::$APP_URL/health did not answer 200 on the last ping."; exit 1; }

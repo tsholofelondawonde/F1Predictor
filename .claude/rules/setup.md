@@ -49,9 +49,23 @@ tense; the "apply by hand before merging" rule still stands for the next model c
 **`AddModelTrainingRuns` is already applied to Neon production** (verified with
 `dotnet ef migrations list`, which showed no pending migrations). It adds one table,
 `ModelTrainingRuns`, plus its index. It was most likely applied by the Development-startup
-auto-migrate rather than by hand, because the `LocalDb` user secret points at the production
-endpoint (the `-pooler` host of the same Neon branch) — there is currently no separate
-development branch. Treat local ingest/train runs as writing to production until one is created.
+auto-migrate rather than by hand, because at the time the `LocalDb` user secret pointed at the
+production endpoint.
+
+**Local development now uses a separate Neon `dev` branch** (branched from `main`, so it starts
+with production's data). `ConnectionStrings:LocalDb` points at that branch's pooled endpoint, in
+the user secrets of **both** `F1Predictor.AppHost` (used by Aspire) and `F1Predictor.WebApi`
+(used by a standalone `dotnet run`). Never set `ConnectionStrings:ProdDb` locally: it is read
+before `LocalDb` and would silently win. Two gotchas:
+
+- Npgsql takes the key-value form (`Host=…;Database=…;Username=…;Password=…;SSL Mode=Require`),
+  **not** the `postgresql://…` URI that Neon's console shows by default. A URI fails at startup.
+- `ApplicationDbContextFactory` (the `dotnet ef` design-time factory) reads appsettings and
+  environment variables only, not user secrets. Pass `--connection "<string>"` or set
+  `ConnectionStrings__LocalDb` for any `dotnet ef` command that has to connect.
+
+Local non-secret overrides (CORS origin, AI pinned off, debug logging) live in
+`F1Predictor.WebApi/appsettings.Development.json`, which is gitignored.
 
 Then, from `/scalar`: ingest a season → rebuild features → train (optionally
 `?fromYear=2023&notes=…`) → read the holdout table → compare runs at `GET /api/models/runs`.
@@ -84,9 +98,8 @@ Without a hosted provider (see "AI provider (production)" below), production has
 — there is no Ollama daemon in Azure Container Apps. Production serves a stored preview read-only
 through `GET /api/races/{sessionKey}/preview` — nothing in prod needs to reach an LLM to display
 one — but a preview generated against the usual local setup never gets there:
-`ConnectionStrings:LocalDb` is meant to be a Neon development branch, not production (today it
-points at the production endpoint — see above), so the row lands in
-the wrong database. To publish a preview to production, run the local API with
+`ConnectionStrings:LocalDb` points at the Neon `dev` branch, not production (see above), so the
+row lands in the wrong database. To publish a preview to production, run the local API with
 `ConnectionStrings:LocalDb` temporarily pointed at the **production** connection string (a user
 secret, never `appsettings.json`), `POST /api/races/{sessionKey}/preview` with the `X-Api-Key`
 header, then point the secret back at the development branch. Until that is done the deployed
@@ -165,6 +178,45 @@ and PR; `.github/workflows/deploy.yml`, on a push to `main`, builds
 and polls `/health` until it reports `Healthy`. `workflow_dispatch` runs the same path by
 hand.
 
+### Provisioning (one time)
+
+The pipeline only swaps images; the Azure resources it deploys to are created once by
+`infra/provision.sh`. Run it from your own Git Bash terminal after `az login` and `gh auth login` — not through an
+agent or a `!` prompt, because it asks for the Neon **production** connection string
+(key-value form, not the `postgresql://` URI) and the API key with hidden input. It is safe to
+re-run: everything is looked up first and only created when missing.
+
+What it sets up, and why:
+
+- **Region Germany West Central**, next to Neon's `eu-central-1` (Frankfurt): the API makes
+  several database round trips per request, the browser only one.
+- **Consumption-only Container Apps environment** (`cae-grid-mind`), with app
+  `ca-grid-mind-api`: 0.5 vCPU / 1 GiB, **scale 0..1**. Max 1 is load-bearing, not just
+  thrift — Quartz is in-memory, so two replicas would both run the ingestion coordinator.
+- **ACR Basic**, admin user off. The app pulls with its system-assigned identity (`AcrPull`);
+  the first image is built in the cloud with `az acr build`, so no local Docker is needed.
+- **Log Analytics** (`log-grid-mind`): 30-day retention, 0.1 GB/day cap, inside the free tier.
+- **Secrets** `neon-connection-string` and `api-key` on the app, surfaced as
+  `ConnectionStrings__ProdDb` and `Security__ApiKey`, plus `Frontend__BaseUrl` (the single CORS
+  origin — defaults to `http://localhost:3000`; set it to the Vercel URL with
+  `az containerapp update --set-env-vars`).
+- **The OIDC app registration** (`gh-f1predictor-deploy`), its two federated credentials, its
+  role assignments, the `azure-production` GitHub environment, and every repo variable/secret
+  listed above.
+
+**Expected cost** is about $5/month — the ACR Basic registry. Compute scaled to zero sits
+inside the Container Apps monthly free grant (180,000 vCPU-s, 360,000 GiB-s, 2M requests,
+which is roughly 100 active hours at this size). The trade-off is a 10–20 second cold start on
+the first request after an idle spell.
+
+**Scale to zero means the in-process scheduler sleeps.** `SeasonIngestionCoordinatorJob` only
+runs while a replica is up. Its trigger is `StartNow()`, so every cold start runs the "is
+anything due?" check at once — and `.github/workflows/wake-after-race.yml` exploits that,
+pinging `/health` three times, four minutes apart, after each race window (Sat 20:17, Sun 12:17
+and 20:17, Mon 04:17 UTC, or by hand). It needs no API key; the app decides what to fetch.
+Calling `POST /ingest` from Actions instead would not work well: ingest is synchronous
+(4–5 min) and ACA cuts requests at 240s.
+
 Four things about it are load-bearing:
 
 - **The image is deployed by commit SHA, never `:latest`.** Re-pointing the app at the tag
@@ -220,8 +272,9 @@ deliberately — the container app can scale out, and concurrent replicas racing
 run `dotnet ef database update` against Neon by hand before merging the deploy.
 
 Container-app configuration is not part of the pipeline either: `Security__ApiKey`,
-`ConnectionStrings__ProdDb` and `Frontend__BaseUrl` are already set on the app, backed by
-the `api-key` and `neon-connection-string` secrets. A deploy only ever swaps the image.
+`ConnectionStrings__ProdDb` and `Frontend__BaseUrl` are set once by `infra/provision.sh`,
+backed by the `api-key` and `neon-connection-string` secrets. A deploy only ever swaps the
+image; change a setting with `az containerapp update` (or `az containerapp secret set`).
 
 ## Branch protection
 
